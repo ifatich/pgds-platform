@@ -1,0 +1,23 @@
+{
+  "name": "pgds-api",
+  "version": "1.0.0",
+  "description": "Pegadaian Design System Platform – Vercel Serverless API",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^12.6.2",
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "express-rate-limit": "^8.3.1",
+    "dotenv": "^17.3.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "uuid": "^9.0.1"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3"
+    ]
+  }
+}
