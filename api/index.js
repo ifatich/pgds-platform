@@ -51,16 +51,31 @@ try {
   console.error('❌ Database initialization failed:', err.message);
 }
 
-// Routes
-app.use('/api/auth', require('../backend/src/routes/auth'));
-app.use('/api/requests', require('../backend/src/routes/requests'));
-app.use('/api/components', require('../backend/src/routes/components'));
-app.use('/api/users', require('../backend/src/routes/users'));
-app.use('/api/menu-settings', require('../backend/src/routes/menu'));
-app.use('/api/data-master', require('../backend/src/routes/data-master'));
-app.use('/api/activity', require('../backend/src/routes/activity'));
+// Routes - with debug logging
+const mountRoute = (path, handler) => {
+  try {
+    app.use(path, handler);
+    console.log(`✅ Route mounted: ${path}`);
+  } catch (err) {
+    console.error(`❌ Failed to mount route ${path}:`, err.message);
+  }
+};
+
+mountRoute('/api/auth', require('../backend/src/routes/auth'));
+mountRoute('/api/requests', require('../backend/src/routes/requests'));
+mountRoute('/api/components', require('../backend/src/routes/components'));
+mountRoute('/api/users', require('../backend/src/routes/users'));
+mountRoute('/api/menu-settings', require('../backend/src/routes/menu'));
+mountRoute('/api/data-master', require('../backend/src/routes/data-master'));
+mountRoute('/api/activity', require('../backend/src/routes/activity'));
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }));
+
+// 404 handler with debug info
+app.use('/api/*', (req, res) => {
+  console.warn(`⚠️ 404: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({ error: 'Route not found', path: req.originalUrl, method: req.method });
+});
 
 // Error handler
 app.use((err, req, res, _next) => {
