@@ -266,8 +266,8 @@ function initDb() {
     { name:'PgPageLogin', slug:'pg-page-login', level:'page', cat:'auth', desc:'Login page with email/phone + password, SSO options.', figma:'https://figma.com/pg-login', sb:null, owner:'@andi', status:'done', version:'2.0.0', tags:['page','auth'], dAgo:88 },
   ];
 
-  const insComp = db.prepare(`INSERT INTO components VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-  COMPS.forEach(c => insComp.run(uuid(), c.name, c.slug, c.level, c.cat, c.desc, c.figma, c.sb, c.owner, c.status, c.version, 1, JSON.stringify(c.tags), dAgo(c.dAgo), dAgo(Math.max(0, c.dAgo - 5))));
+  const insComp = db.prepare(`INSERT INTO components VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
+  COMPS.forEach(c => insComp.run(uuid(), c.name, c.slug, c.level, c.cat, c.desc, c.figma, c.sb, c.owner, c.status, c.version, 1, JSON.stringify(c.tags), dAgo(c.dAgo), dAgo(Math.max(0, c.dAgo - 5)), null, null));
 
   // Requests + logs
   const insReq = db.prepare(`INSERT INTO requests (id,title,request_type,requester_role,priority,platform,component_name,component_description,use_case,affected_products,design_reference_link,state_requirements,responsive_behaviour,accessibility_requirement,impact_level,status,workflow,audit_reason,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
