@@ -78,10 +78,14 @@ mountRoute('/api/activity', require('../backend/src/routes/activity'));
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
-// 404 handler with debug info
-app.use('/api/*', (req, res) => {
-  console.warn(`⚠️ 404: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({ error: 'Route not found', path: req.originalUrl, method: req.method });
+// 404 handler with debug info (after routes so routes are checked first)
+app.use((req, res) => {
+  if (req.path.startsWith('/api/')) {
+    console.warn(`⚠️ 404: ${req.method} ${req.originalUrl}`);
+    res.status(404).json({ error: 'Route not found', path: req.originalUrl, method: req.method });
+  } else {
+    res.status(404).json({ error: 'Not found' });
+  }
 });
 
 // Error handler
