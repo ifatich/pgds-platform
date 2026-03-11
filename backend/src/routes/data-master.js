@@ -3,8 +3,6 @@ const router = require('express').Router();
 const { getDb } = require('../data/db');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
-router.use(authenticate);
-
 const DEFAULT_SETTINGS = {
   requestTypes: [
     { value: 'new_component',          label: 'New Component' },
@@ -28,7 +26,7 @@ router.get('/', (req, res) => {
 });
 
 // PUT — super_admin only
-router.put('/', requireAdmin, (req, res) => {
+router.put('/', authenticate, requireAdmin, (req, res) => {
   const { requestTypes, platforms, priorities, impactLevels, stateRequirements, responsiveBehaviours } = req.body;
   // Basic validation
   if (!Array.isArray(requestTypes) || !Array.isArray(platforms) || !Array.isArray(priorities)) {

@@ -4,8 +4,6 @@ const { v4: uuid } = require('uuid');
 const { getDb } = require('../data/db');
 const { authenticate } = require('../middleware/auth');
 
-router.use(authenticate);
-
 const parse = (c) => ({
   ...c,
   tags: JSON.parse(c.tags || '[]'),
@@ -33,7 +31,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST create
-router.post('/', (req, res) => {
+router.post('/', authenticate, (req, res) => {
   const { role } = req.user;
   if (!['engineer','super_admin'].includes(role)) return res.status(403).json({ error: 'Forbidden' });
   const { name, slug, atomicLevel, category, description, figmaUrl, storybookUrl, codeOwner, tags, library, version, docLink } = req.body;
@@ -54,7 +52,7 @@ router.post('/', (req, res) => {
 });
 
 // PUT update
-router.put('/:id', (req, res) => {
+router.put('/:id', authenticate, (req, res) => {
   const { role } = req.user;
   if (!['engineer','super_admin'].includes(role)) return res.status(403).json({ error: 'Forbidden' });
   const { name, slug, atomicLevel, category, description, figmaUrl, storybookUrl, codeOwner, tags, library, version, docLink } = req.body;
@@ -67,7 +65,7 @@ router.put('/:id', (req, res) => {
 });
 
 // DELETE (soft)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', authenticate, (req, res) => {
   if (!['engineer','super_admin'].includes(req.user.role)) return res.status(403).json({ error: 'Forbidden' });
   getDb().prepare('UPDATE components SET is_active=0, updated_at=? WHERE id=?').run(new Date().toISOString(), req.params.id);
   res.json({ ok: true });
