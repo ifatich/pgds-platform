@@ -151,11 +151,21 @@ pnpm build
    * Framework Preset: `Other` atau `Vue` (Vite) – tidak terlalu penting
    * **Install Command**: `cd frontend && npm install` (pastikan dependencies terinstal)
    * **Build Command**: `cd frontend && npm run build`
-   * **Output Directory**: `frontend/dist`
+   * **Output Directory**: `frontend/dist` (atau `dist` if you set **Root Directory** to `frontend`)
    * Atur Package Manager ke **npm** (default). Vercel tidak menginstal `pnpm` secara otomatis.
-3. **Environment Variables**:
+4. **Environment Variables**:
    * `VITE_API_URL` → URL backend produksi (mis. `https://your-backend.vercel.app/api`)
-4. **Tambahan**: tidak perlu `vercel.json`, dashboard sudah menangani monorepo.
+5. **Optional file**: you can also add a `vercel.json` at project root with
+   ```json
+   {
+     "root": "frontend",
+     "builds": [
+       { "src": "package.json", "use": "@vercel/static-build", "config": { "distDir": "dist" } }
+     ],
+     "outputDirectory": "frontend/dist"
+   }
+   ```
+   This makes the dashboard settings unnecessary.
 5. Deploy otomatis setiap push ke `main`.
 
 Jika menggunakan Netlify, konfigurasi sama: *Install* `cd frontend && npm install` dan *Build* `npm run build`, publish `frontend/dist`, lalu set env var.
