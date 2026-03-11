@@ -4,7 +4,8 @@ const bcrypt   = require('bcryptjs');
 const { v4: uuid } = require('uuid');
 const path     = require('path');
 
-const DB_PATH = path.join(__dirname, '../../pgds.db');
+// Support Vercel ephemeral filesystem + local development
+const DB_PATH = process.env.DB_PATH || path.join(__dirname, '../../pgds.db');
 let db;
 
 function getDb() {

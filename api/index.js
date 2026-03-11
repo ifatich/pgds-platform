@@ -33,7 +33,12 @@ const authLimiter = rateLimit({
 app.use('/api/auth/login', authLimiter);
 
 // Initialize database
-initDb();
+try {
+  initDb();
+  console.log('✅ Database initialized');
+} catch (err) {
+  console.error('❌ Database initialization failed:', err.message);
+}
 
 // Routes
 app.use('/api/auth', require('../backend/src/routes/auth'));
