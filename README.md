@@ -139,5 +139,22 @@ pnpm build
 ### Rekomendasi Platform (Gratis)
 | Layer | Platform | Catatan |
 |---|---|---|
-| Frontend | Vercel / Netlify | Deploy `frontend/dist/` |
+| Frontend | Vercel / Netlify | Deploy `frontend/dist/` (lihat panduan di bawah) |
 | Backend | Fly.io | Persistent volume untuk `pgds.db` |
+
+---
+
+## Deploy Frontend ke Vercel
+
+1. **Hubungkan repo**: login ke vercel.com → "New Project" → pilih repo GitHub.
+2. **Settings**:
+   * Framework Preset: `Vue` (Vite)
+   * Build Command: `pnpm build` (atau `npm run build`)
+   * Output Directory: `frontend/dist`
+3. **Environment Variables**:
+   * `VITE_API_URL` → URL backend produksi (mis. `https://your-backend.vercel.app/api`)
+4. **Tambahan**: file `vercel.json` sudah ada di root untuk memastikan output path benar.
+5. Deploy otomatis setiap push ke `main`.
+
+Jika menggunakan Netlify, konfigurasi sama: build command `pnpm build`, publish `frontend/dist`, dan set env var.
+
