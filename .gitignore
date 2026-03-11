@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Environment variables (berisi secret — jangan di-commit)
+.env
+!.env.example
+
+# Database — jangan commit data produksi
+*.db
+*.db-shm
+*.db-wal
+backend/prisma/*.db
+
+# Build output
+frontend/dist/
+backend/dist/
+
+# Prisma generated (tidak dipakai di runtime, codebase pakai better-sqlite3 langsung)
+backend/prisma/
+backend/.prisma/
+backend/node_modules/.prisma/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Stray export / scratch files in root
+users_export.txt
+*.html
+!frontend/index.html
+
+# Security / test scripts dengan kredensial hardcoded
+backend/pentest.py
+
+# Editor
+.vscode/
+.idea/
+*.swp

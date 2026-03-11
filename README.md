@@ -59,6 +59,14 @@ pnpm dev
 
 Database SQLite (`pgds.db`) dibuat otomatis di folder `backend/` saat pertama kali dijalankan, lengkap dengan data seed.
 
+## Demo Credentials
+
+| Role | Email | Password |
+|---|---|---|
+| Super Admin | admin@pegadaian.co.id | admin123 |
+| Designer | andi.wijaya@pegadaian.co.id | password123 |
+| Engineer | budi.santoso@pegadaian.co.id | password123 |
+| Developer | maya.sari@pegadaian.co.id | password123 |
 ## API Endpoints
 
 ```
