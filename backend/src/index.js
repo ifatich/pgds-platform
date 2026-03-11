@@ -56,11 +56,24 @@ app.use('/api/activity',      require('./routes/activity'));
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 
+// Serve frontend build if available (for single-service deployment)
+const path = require('path');
+const fs = require('fs');
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+if (fs.existsSync(frontendDist)) {
+  app.use(express.static(frontendDist));
+  // SPA fallback — route all non-API requests to index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendDist, 'index.html'));
+  });
+}
+
 app.use((err, req, res, _next) => {
   console.error(err.stack);
   res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
 app.listen(PORT, () => {
-  console.log(`\n🚀  PGDS API  →  http://localhost:${PORT}/api\n`);
+  const fronendStatus = fs.existsSync(frontendDist) ? '+ Frontend' : '';
+  console.log(`\n🚀  PGDS API  →  http://localhost:${PORT}/api ${fronendStatus}\n`);
 });
