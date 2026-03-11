@@ -3,6 +3,8 @@
  * Wraps the Express app untuk Vercel deployment
  */
 
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
