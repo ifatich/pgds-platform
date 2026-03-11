@@ -6,6 +6,6 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
-    "VITE_API_URL": "https://YOUR_VERCEL_DEPLOYMENT_URL.vercel.app/api"
+    "VITE_API_URL": "https://pgds-platform.vercel.app/api"
   }
 }
