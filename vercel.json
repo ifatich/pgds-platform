@@ -1,5 +1,7 @@
 {
   "version": 2,
+  // root outputDirectory so Vercel knows where to serve files
+  "outputDirectory": "frontend/dist",
   "builds": [
     { "src": "frontend/package.json", "use": "@vercel/static-build", "config": { "distDir": "frontend/dist" } }
   ],
