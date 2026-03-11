@@ -3,7 +3,6 @@
   "outputDirectory": "frontend/dist",
   "installCommand": "npm install && npm --prefix ./api install",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "env": {
