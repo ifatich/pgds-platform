@@ -1,14 +1,11 @@
 {
-  "root": "frontend",
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
-    }
-  ],
+  "buildCommand": "cd frontend && npm install && npm run build && cd ../backend && npm install",
   "outputDirectory": "frontend/dist",
   "rewrites": [
-    { "source": "(.*)", "destination": "/index.html" }
-  ]
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/(.*)", "destination": "/index.html" }
+  ],
+  "env": {
+    "VITE_API_URL": "https://YOUR_VERCEL_DEPLOYMENT_URL.vercel.app/api"
+  }
 }
