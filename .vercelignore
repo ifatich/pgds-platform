@@ -1,0 +1,27 @@
+# Git
+.git
+.gitignore
+
+# Node
+node_modules/
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Build outputs
+dist/
+.next/
+out/
+
+# Development
+.env.local
+.env.*.local
+.vscode/
+.DS_Store
+
+# Source maps (optional, keep if needed for debugging)
+# *.map
+
+# Database files (keep .db files for seeding, but /tmp ones are ephemeral)
+*.db-shm
+*.db-wal
