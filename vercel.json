@@ -9,8 +9,6 @@
   "env": {
     "VITE_API_URL": "/api",
     "DB_PATH": "/tmp/pgds.db",
-    "JWT_SECRET": "@jwt_secret_prod",
-    "FRONTEND_URL": "@frontend_url_prod",
     "NODE_ENV": "production"
   }
 }
