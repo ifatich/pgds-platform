@@ -245,7 +245,7 @@ function initDb() {
 
   // Try load custom seed data from file if available
   try {
-    const seedFile = path.join(__dirname, '../seed-data.json');
+    const seedFile = path.join(__dirname, '../../seed-data.json');
     if (require('fs').existsSync(seedFile)) {
       const seedData = JSON.parse(require('fs').readFileSync(seedFile, 'utf-8'));
       console.log('📥 Loading custom seed data from seed-data.json...');
