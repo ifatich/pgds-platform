@@ -224,9 +224,22 @@ function initDb() {
   // Back-fill requester_id from requester_name (for requests created after name migration)
   db.prepare(`UPDATE requests SET requester_id = (SELECT id FROM users WHERE name = requests.requester_name) WHERE requester_id IS NULL AND requester_name IS NOT NULL`).run()
 
-  // ── SEED (only if empty) ──────────────────────────────────────────────────
+  // ── SEED (only if empty, or forced via RESET_DB=true) ───────────────────
   const userCount = db.prepare('SELECT COUNT(*) as c FROM users').get().c;
-  if (userCount > 0) return; // already seeded
+  if (userCount > 0 && process.env.RESET_DB !== 'true') return; // already seeded
+
+  if (process.env.RESET_DB === 'true') {
+    console.log('🔄 RESET_DB=true — wiping and re-seeding database...');
+    db.exec(`
+      DELETE FROM request_logs;
+      DELETE FROM activity_log;
+      DELETE FROM requests;
+      DELETE FROM components;
+      DELETE FROM users;
+      DELETE FROM menu_settings;
+      DELETE FROM data_master;
+    `);
+  }
 
   console.log('🌱 Seeding database...');
 
