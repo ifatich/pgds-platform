@@ -230,6 +230,44 @@ function initDb() {
 
   console.log('🌱 Seeding database...');
 
+  // Try load custom seed data from file if available
+  try {
+    const seedFile = path.join(__dirname, '../seed-data.json');
+    if (require('fs').existsSync(seedFile)) {
+      const seedData = JSON.parse(require('fs').readFileSync(seedFile, 'utf-8'));
+      console.log('📥 Loading custom seed data from seed-data.json...');
+      
+      // Insert all tables from seed file
+      Object.entries(seedData.tables || {}).forEach(([table, rows]) => {
+        if (rows.length === 0) return;
+        
+        // Get column names from first row
+        const cols = Object.keys(rows[0]);
+        const placeholders = cols.map(() => '?').join(',');
+        const colNames = cols.join(',');
+        const insertStmt = db.prepare(`INSERT INTO ${table} (${colNames}) VALUES (${placeholders})`);
+        
+        rows.forEach(row => {
+          const values = cols.map(col => row[col]);
+          try {
+            insertStmt.run(...values);
+          } catch (e) {
+            // Skip duplicates or constraint violations
+            if (!e.message.includes('UNIQUE') && !e.message.includes('CONSTRAINT')) {
+              console.warn(`  ⚠️  ${table} insert error:`, e.message);
+            }
+          }
+        });
+        console.log(`  ✅ Seeded ${table}: ${rows.length} rows`);
+      });
+      console.log('✅ Database seeded from custom data.');
+      return;
+    }
+  } catch (e) {
+    console.warn('  seed-data.json error:', e.message);
+  }
+
+  // Default seeding if no custom seed file
   const hashPw = (pw) => bcrypt.hashSync(pw, 10);
 
   // Users
