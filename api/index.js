@@ -13,6 +13,9 @@ const { initDb } = require('../backend/src/data/db');
 
 const app = express();
 
+// Trust Vercel proxy for rate limiting and client IP
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 app.use(
