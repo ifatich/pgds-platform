@@ -9,8 +9,10 @@ async function apiFetch(path, opts = {}) {
   const token = getToken()
   const res = await fetch(BASE + path, {
     ...opts,
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
+      'Cache-Control': 'no-cache',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...opts.headers,
     },

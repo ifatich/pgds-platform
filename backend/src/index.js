@@ -12,6 +12,13 @@ const PORT = process.env.PORT || 3001;
 // Trust proxy for rate limiting and client IP
 app.set('trust proxy', 1);
 
+// Prevent API caching
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  next();
+});
+
 // Security headers
 app.use(helmet());
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173', credentials: true }));

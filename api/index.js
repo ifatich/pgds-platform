@@ -16,6 +16,13 @@ const app = express();
 // Trust Vercel proxy for rate limiting and client IP
 app.set('trust proxy', 1);
 
+// Prevent API caching in Vercel
+app.use((req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+  res.set('Pragma', 'no-cache');
+  next();
+});
+
 // Security headers
 app.use(helmet());
 app.use(
