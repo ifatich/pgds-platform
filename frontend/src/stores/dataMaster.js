@@ -11,6 +11,7 @@ export const useDataMasterStore = defineStore('dataMaster', () => {
     impactLevels: [],
     stateRequirements: [],
     responsiveBehaviours: [],
+    severityLevels: [],
   })
   const loading = ref(false)
 

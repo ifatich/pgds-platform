@@ -8,15 +8,16 @@ export const ALL_MENU_ITEMS = [
   { id:'dashboard',  view:'dashboard',  label:'Dashboard',         icon:'🏠', group:'Overview', description:'Ringkasan & KPI dashboard',           required:true  },
   { id:'requests',   view:'requests',   label:'All Requests',      icon:'📋', group:'Requests', description:'Daftar semua component request',      required:true  },
   { id:'my_tasks',   view:'my_tasks',   label:'My Tasks',          icon:'✅', group:'Requests', description:'Task yang perlu ditindaklanjuti',     required:false },
+  { id:'research',   view:'research',   label:'Research Requests', icon:'🔬', group:'Requests', description:'UI/UX research request management',   required:false },
   { id:'components', view:'components', label:'Component Library', icon:'📦', group:'Library',  description:'Library komponen design system',      required:false },
   { id:'audit',      view:'audit',      label:'Audit Program',     icon:'🔍', group:'Audit',    description:'Workflow audit komponen',             required:false },
 ]
 
 const DEFAULT = {
-  designer:  { dashboard:true, requests:true, my_tasks:true, components:true, audit:true },
-  engineer:  { dashboard:true, requests:true, my_tasks:true, components:true, audit:true },
-  developer: { dashboard:true, requests:true, my_tasks:false, components:true, audit:false },
-  admin_disabled: { dashboard:false, requests:false, my_tasks:false, components:false, audit:false },
+  designer:  { dashboard:true, requests:true, my_tasks:true, research:true, components:true, audit:true },
+  engineer:  { dashboard:true, requests:true, my_tasks:true, research:false, components:true, audit:true },
+  developer: { dashboard:true, requests:true, my_tasks:false, research:true, components:true, audit:false },
+  admin_disabled: { dashboard:false, requests:false, my_tasks:false, research:false, components:false, audit:false },
 }
 
 export const useMenuStore = defineStore('menu', () => {

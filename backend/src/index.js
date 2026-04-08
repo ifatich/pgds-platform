@@ -17,7 +17,7 @@ app.use(cors({
   origin: process.env.FRONTEND_URL || 'http://localhost:5173', 
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control'],
 }));
 
 // Handle preflight requests explicitly  
@@ -46,13 +46,14 @@ app.use('/api/auth/login', authLimiter);
 
 initDb();
 
-app.use('/api/auth',          require('./routes/auth'));
-app.use('/api/requests',      require('./routes/requests'));
-app.use('/api/components',    require('./routes/components'));
-app.use('/api/users',         require('./routes/users'));
-app.use('/api/menu-settings', require('./routes/menu'));
-app.use('/api/data-master',   require('./routes/data-master'));
-app.use('/api/activity',      require('./routes/activity'));
+app.use('/api/auth',               require('./routes/auth'));
+app.use('/api/requests',           require('./routes/requests'));
+app.use('/api/research-requests',  require('./routes/research-requests'));
+app.use('/api/components',         require('./routes/components'));
+app.use('/api/users',              require('./routes/users'));
+app.use('/api/menu-settings',      require('./routes/menu'));
+app.use('/api/data-master',        require('./routes/data-master'));
+app.use('/api/activity',           require('./routes/activity'));
 
 app.get('/api/health', (_, res) => res.json({ ok: true, ts: new Date().toISOString() }));
 

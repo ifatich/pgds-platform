@@ -1,8 +1,5 @@
 // src/composables/useFormat.js
 
-// Master data: daftar library yang digunakan di design system
-export const LIBRARIES = ['gwind', 'kitvue', '@pegadaian/kitvue']
-
 export function formatDate(d) {
   if (!d) return '—'
   const dt = new Date(d)

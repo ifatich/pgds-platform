@@ -116,6 +116,25 @@ function initDb() {
       created_at TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS research_requests (
+      id TEXT PRIMARY KEY,
+      requester_id TEXT NOT NULL REFERENCES users(id),
+      requester_name TEXT NOT NULL,
+      requester_email TEXT NOT NULL,
+      requester_phone TEXT,
+      department TEXT,
+      what_we_help TEXT NOT NULL,
+      project_name TEXT NOT NULL,
+      problem_description TEXT NOT NULL,
+      timeline_quarter TEXT NOT NULL CHECK(timeline_quarter IN ('Q1','Q2','Q3','Q4')),
+      attachment_name TEXT,
+      attachment_data_url TEXT,
+      status TEXT NOT NULL DEFAULT 'submitted' CHECK(status IN ('submitted','in_progress','completed','on_hold')),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS menu_settings (
       id TEXT PRIMARY KEY DEFAULT 'singleton',
       settings TEXT NOT NULL
@@ -132,18 +151,29 @@ function initDb() {
   if (!dmRow) {
     const dmDefaults = JSON.stringify({
       requestTypes: [
-        { value: 'new_component',          label: 'New Component' },
-        { value: 'component_variant',      label: 'Component Variant' },
-        { value: 'component_enhancement',  label: 'Enhancement' },
-        { value: 'component_redesign',     label: 'Redesign' },
-        { value: 'component_bug_fix',      label: 'Bug Fix' },
-        { value: 'documentation_update',   label: 'Documentation Update' },
+        // Engineer Request Types
+        { value: 'new_component',          label: 'New Component', category: 'engineer' },
+        { value: 'component_variant',      label: 'Component Variant', category: 'engineer' },
+        { value: 'component_enhancement',  label: 'Component Enhancement', category: 'engineer' },
+        { value: 'documentation_update',   label: 'Documentation Update', category: 'engineer' },
+        { value: 'research_prototyping_code',       label: 'Prototyping with Code', category: 'engineer' },
+        // Designer Request Types
+        { value: 'research_strategic_design',      label: 'Strategic Design Thinking', category: 'designer' },
+        { value: 'research_rapid_sprint',           label: 'Rapid Design Sprint', category: 'designer' },
+        { value: 'research_ui_ux_enhancement',      label: 'UI UX Enhancement (Rapid Prototyping)', category: 'designer' },
+        { value: 'research_ui_ux_audit',            label: 'UI UX Audit (Improvement & Evaluation)', category: 'designer' },
+        // Illustrator Request Types
+        { value: 'research_logo_illustration',      label: 'Logo & Illustration Design', category: 'illustrator' },
+        // Researcher Request Types
+        { value: 'research_market_customer',        label: 'Market / Customer Research', category: 'researcher' },
+        { value: 'research_usability_testing',      label: 'Usability Testing & Evaluation', category: 'researcher' },
       ],
       platforms:            ['Web', 'Mobile', 'Web + Mobile', 'Desktop', 'All'],
       priorities:           ['Critical', 'High', 'Medium', 'Low'],
       impactLevels:         ['Critical Impact', 'High Impact', 'Moderate Impact', 'Low Impact'],
       stateRequirements:    ['Default', 'Hover', 'Focus', 'Active', 'Disabled', 'Loading', 'Error', 'Empty'],
       responsiveBehaviours: ['Responsive', 'Desktop Only', 'Mobile Only', 'Fixed Width'],
+      severityLevels:       ['Minor', 'Medium', 'Major'],
     });
     db.prepare(`INSERT INTO data_master (id, settings) VALUES ('singleton', ?)`).run(dmDefaults);
   }

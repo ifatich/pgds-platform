@@ -47,13 +47,14 @@
               <tr>
                 <th style="width:40px">#</th>
                 <th>{{ activeCategory.isKv ? 'Label (Tampil)' : 'Nilai' }}</th>
-                <th v-if="activeCategory.isKv" style="width:200px">Key (Value)</th>
+                <th v-if="activeCategory.isKv" style="width:120px">Key (Value)</th>
+                <th v-if="activeKey === 'requestTypes'" style="width:120px">Kategori</th>
                 <th style="width:90px">Aksi</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="currentItems.length === 0">
-                <td :colspan="activeCategory.isKv ? 4 : 3" style="text-align:center;padding:32px;color:var(--s400)">
+                <td :colspan="activeKey === 'requestTypes' ? 5 : (activeCategory.isKv ? 4 : 3)" style="text-align:center;padding:32px;color:var(--s400)">
                   Belum ada data. Klik "+ Tambah" untuk menambahkan.
                 </td>
               </tr>
@@ -62,6 +63,9 @@
                 <td class="dm-td-label">{{ activeCategory.isKv ? item.label : item }}</td>
                 <td v-if="activeCategory.isKv" class="dm-td-value">
                   <span class="dm-mono-pill">{{ item.value }}</span>
+                </td>
+                <td v-if="activeKey === 'requestTypes'" class="dm-td-category">
+                  <span class="dm-cat-badge" :title="item.category">{{ item.category }}</span>
                 </td>
                 <td class="dm-td-actions">
                   <button class="btn btn-ghost btn-icon btn-sm" @click="openModal(idx)" title="Edit">✏️</button>
@@ -94,6 +98,16 @@
                 <label class="fl">Key / Value <span style="font-size:11px;color:var(--s400)">(otomatis dari label)</span></label>
                 <input class="fi" v-model="modal.value" placeholder="Contoh: new_component" style="font-family:'JetBrains Mono',monospace;font-size:13px" />
               </div>
+              <div class="fg" v-if="activeKey === 'requestTypes'">
+                <label class="fl">Kategori <span class="req">*</span></label>
+                <select class="fs" v-model="modal.category">
+                  <option value="">-- Pilih Kategori --</option>
+                  <option value="engineer">⚙️ Engineer</option>
+                  <option value="designer">🎨 Designer</option>
+                  <option value="illustrator">🎭 Illustrator</option>
+                  <option value="researcher">🔬 Researcher</option>
+                </select>
+              </div>
             </div>
             <div class="mf">
               <button class="btn btn-sec" @click="modal.show = false">Batal</button>
@@ -116,11 +130,11 @@ const ui      = useUiStore()
 
 const CATEGORIES = [
   { key: 'requestTypes',        icon: '🏷️', title: 'Request Type',          desc: 'Jenis request yang bisa dipilih saat submit', isKv: true },
-  { key: 'platforms',           icon: '🖥️', title: 'Platform',              desc: 'Platform target pengembangan komponen' },
   { key: 'priorities',          icon: '🔥', title: 'Priority',              desc: 'Tingkat urgensi request' },
   { key: 'impactLevels',        icon: '📊', title: 'Impact Level',          desc: 'Tingkat dampak terhadap produk' },
   { key: 'stateRequirements',   icon: '🎛️', title: 'State Requirements',    desc: 'State interaksi yang perlu diimplementasi' },
   { key: 'responsiveBehaviours',icon: '📐', title: 'Responsive Behaviour',  desc: 'Perilaku responsif komponen' },
+  { key: 'severityLevels',      icon: '⚠️', title: 'Severity Level',        desc: 'Tingkat keparahan masalah' },
 ]
 
 const activeKey = ref('requestTypes')
@@ -128,18 +142,18 @@ const activeCategory = computed(() => CATEGORIES.find(c => c.key === activeKey.v
 
 // Local working copy
 const local = reactive({
-  requestTypes: [], platforms: [], priorities: [],
-  impactLevels: [], stateRequirements: [], responsiveBehaviours: [],
+  requestTypes: [], priorities: [],
+  impactLevels: [], stateRequirements: [], responsiveBehaviours: [], severityLevels: [],
 })
 
 function syncFromStore() {
   const s = dmStore.settings
   local.requestTypes        = (s.requestTypes || []).map(t => ({ ...t }))
-  local.platforms            = [...(s.platforms || [])]
   local.priorities           = [...(s.priorities || [])]
   local.impactLevels         = [...(s.impactLevels || [])]
   local.stateRequirements    = [...(s.stateRequirements || [])]
   local.responsiveBehaviours = [...(s.responsiveBehaviours || [])]
+  local.severityLevels       = [...(s.severityLevels || [])]
 }
 
 onMounted(syncFromStore)
@@ -149,7 +163,7 @@ const currentItems = computed(() => local[activeKey.value] || [])
 const itemCount = (key) => (local[key] || []).length
 
 // ── Modal state ──────────────────────────────────────────────────────────
-const modal = reactive({ show: false, editIdx: null, label: '', value: '', err: '' })
+const modal = reactive({ show: false, editIdx: null, label: '', value: '', category: '', err: '' })
 
 function autoValue() {
   modal.value = modal.label.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
@@ -159,13 +173,13 @@ function openModal(idx) {
   modal.editIdx = idx
   modal.err = ''
   if (idx === null) {
-    modal.label = ''; modal.value = ''
+    modal.label = ''; modal.value = ''; modal.category = ''
   } else {
     const item = currentItems.value[idx]
     if (activeCategory.value.isKv) {
-      modal.label = item.label; modal.value = item.value
+      modal.label = item.label; modal.value = item.value; modal.category = item.category || ''
     } else {
-      modal.label = item; modal.value = ''
+      modal.label = item; modal.value = ''; modal.category = ''
     }
   }
   modal.show = true
@@ -174,14 +188,21 @@ function openModal(idx) {
 async function confirmModal() {
   if (!modal.label.trim()) { modal.err = 'Nilai wajib diisi'; return }
   if (activeCategory.value.isKv && !modal.value.trim()) autoValue()
+  if (activeKey.value === 'requestTypes' && !modal.category.trim()) { modal.err = 'Kategori wajib dipilih'; return }
 
   const key = activeKey.value
   if (modal.editIdx === null) {
-    if (activeCategory.value.isKv) local[key].push({ label: modal.label.trim(), value: modal.value.trim() })
-    else local[key].push(modal.label.trim())
+    if (activeCategory.value.isKv) {
+      local[key].push({ label: modal.label.trim(), value: modal.value.trim(), category: modal.category.trim() || '' })
+    } else {
+      local[key].push(modal.label.trim())
+    }
   } else {
-    if (activeCategory.value.isKv) local[key][modal.editIdx] = { label: modal.label.trim(), value: modal.value.trim() }
-    else local[key][modal.editIdx] = modal.label.trim()
+    if (activeCategory.value.isKv) {
+      local[key][modal.editIdx] = { label: modal.label.trim(), value: modal.value.trim(), category: modal.category.trim() || '' }
+    } else {
+      local[key][modal.editIdx] = modal.label.trim()
+    }
   }
   modal.show = false
   await persist()
@@ -196,12 +217,12 @@ async function doDelete(idx) {
 async function persist() {
   try {
     await dmStore.save({
-      requestTypes:        local.requestTypes.map(t => ({ ...t })),
-      platforms:           [...local.platforms],
+      requestTypes:        local.requestTypes.map(t => ({ label: t.label, value: t.value, category: t.category || '' })),
       priorities:          [...local.priorities],
       impactLevels:        [...local.impactLevels],
       stateRequirements:   [...local.stateRequirements],
       responsiveBehaviours:[...local.responsiveBehaviours],
+      severityLevels:      [...local.severityLevels],
     })
     ui.showToast('Disimpan')
   } catch (e) {
@@ -302,4 +323,18 @@ async function persist() {
   padding: 2px 8px;
   border-radius: 4px;
 }
+.dm-cat-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 3px;
+  text-transform: capitalize;
+  background: var(--s100, #f1f5f9);
+  color: var(--s700, #334155);
+}
+.dm-cat-badge.cat-engineer { background: rgba(99, 102, 241, 0.1); color: rgb(99, 102, 241); }
+.dm-cat-badge.cat-designer { background: rgba(236, 72, 153, 0.1); color: rgb(236, 72, 153); }
+.dm-cat-badge.cat-illustrator { background: rgba(168, 85, 247, 0.1); color: rgb(168, 85, 247); }
+.dm-cat-badge.cat-researcher { background: rgba(34, 197, 94, 0.1); color: rgb(34, 197, 94); }
 </style>

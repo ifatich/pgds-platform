@@ -121,13 +121,14 @@ const menuIcons = {
   dashboard:  '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
   requests:   '<path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>',
   my_tasks:   '<path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"/>',
+  research:   '<path d="M9.5 3a6.5 6.5 0 015.957 9.5M21 13a9 9 0 11-18 0 9 9 0 0118 0z"/><circle cx="12" cy="12" r="1"/>',
   components: '<path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>',
   audit:      '<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>',
 }
 
 const viewTitles = {
   dashboard: 'Dashboard', requests: 'Component Requests', my_tasks: 'My Tasks',
-  components: 'Component Library', audit: 'Audit Program', users: 'User Management',
+  research: 'Research Requests', components: 'Component Library', audit: 'Audit Program', users: 'User Management',
   menu_settings: 'Menu Settings', data_master: 'Data Master',
 }
 

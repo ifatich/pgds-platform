@@ -15,6 +15,7 @@ const router = createRouter({
         { path: 'dashboard', name: 'dashboard',      component: () => import('@/views/DashboardView.vue') },
         { path: 'requests',  name: 'requests',       component: () => import('@/views/RequestsView.vue') },
         { path: 'requests/:id', name: 'request-detail', component: () => import('@/views/RequestDetailView.vue') },
+        { path: 'research',  name: 'research',       component: () => import('@/views/ResearchRequestsView.vue') },
         { path: 'my-tasks',  name: 'my_tasks',       component: () => import('@/views/MyTasksView.vue') },
         { path: 'components',name: 'components',     component: () => import('@/views/ComponentsView.vue') },
         { path: 'audit',     name: 'audit',          component: () => import('@/views/AuditView.vue') },

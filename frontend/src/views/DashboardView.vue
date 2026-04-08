@@ -1,64 +1,94 @@
 <template>
   <div>
-    <!-- KPI grid -->
-    <div class="kpi-grid">
-      <div class="kpi green">
-        <div class="kpi-icon">✅</div>
-        <div class="kpi-val" style="color:var(--g)">{{ stats.done }}</div>
-        <div class="kpi-lbl">Published Components</div>
-        <div class="kpi-sub up">All time</div>
+    <!-- KPI Grid (4 columns, mobile-first responsive) -->
+    <div class="row g-3 mb-4">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <div style="font-size: 32px; margin-bottom: 8px">✅</div>
+            <div style="font-size: 24px; font-weight: bold; color: var(--g)">{{ stats.done }}</div>
+            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Published Components</div>
+            <span class="badge bg-success">All time</span>
+          </div>
+        </div>
       </div>
-      <div class="kpi blue">
-        <div class="kpi-icon">🔄</div>
-        <div class="kpi-val" style="color:var(--blue)">{{ stats.active }}</div>
-        <div class="kpi-lbl">Active Requests</div>
-        <div class="kpi-sub info">In progress</div>
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <div style="font-size: 32px; margin-bottom: 8px">🔄</div>
+            <div style="font-size: 24px; font-weight: bold; color: var(--blue)">{{ stats.active }}</div>
+            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Active Requests</div>
+            <span class="badge bg-info">In progress</span>
+          </div>
+        </div>
       </div>
-      <div class="kpi orange">
-        <div class="kpi-icon">⏳</div>
-        <div class="kpi-val" style="color:var(--orange)">{{ stats.myTasks }}</div>
-        <div class="kpi-lbl">{{ auth.role === 'developer' ? 'My Active Requests' : 'My Pending Tasks' }}</div>
-        <div class="kpi-sub warn">Needs action</div>
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <div style="font-size: 32px; margin-bottom: 8px">⏳</div>
+            <div style="font-size: 24px; font-weight: bold; color: var(--orange)">{{ stats.myTasks }}</div>
+            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">{{ auth.role === 'developer' ? 'My Active Requests' : 'My Pending Tasks' }}</div>
+            <span class="badge bg-warning">Needs action</span>
+          </div>
+        </div>
       </div>
-      <div class="kpi purple">
-        <div class="kpi-icon">📦</div>
-        <div class="kpi-val" style="color:var(--purple)">{{ compStore.items.filter(c => c.status === 'done').length }}</div>
-        <div class="kpi-lbl">Total Components</div>
-        <div class="kpi-sub info">In library</div>
+
+      <div class="col-12 col-sm-6 col-lg-3">
+        <div class="card h-100">
+          <div class="card-body text-center">
+            <div style="font-size: 32px; margin-bottom: 8px">📦</div>
+            <div style="font-size: 24px; font-weight: bold; color: var(--purple)">{{ compStore.items.filter(c => c.status === 'done').length }}</div>
+            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Total Components</div>
+            <span class="badge bg-info">In library</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+    <!-- Two-column section: Status Overview & Recent Activity -->
+    <div class="row g-3 mb-4">
       <!-- Request Status Overview -->
-      <div class="card">
-        <div class="card-hd"><h3>{{ auth.role === 'developer' ? 'My Request Status' : 'Request Status Overview' }}</h3></div>
-        <div class="card-bd">
-          <div v-for="s in topStatuses" :key="s.key" class="sp-row">
-            <span class="badge" :class="'b-'+s.key" style="min-width:140px;justify-content:center;font-size:10.5px">{{ s.label }}</span>
-            <div class="sp-bar"><div class="sp-fill" style="background:var(--g)" :style="{ width: pct(s.key)+'%' }"></div></div>
-            <span class="sp-cnt">{{ count(s.key) }}</span>
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">{{ auth.role === 'developer' ? 'My Request Status' : 'Request Status Overview' }}</h5>
+          </div>
+          <div class="card-body">
+            <div v-for="s in topStatuses" :key="s.key" class="d-flex align-items-center gap-2 mb-3">
+              <span class="badge" :class="'b-'+s.key" style="min-width: 140px; justify-content: center; font-size: 10.5px">{{ s.label }}</span>
+              <div class="progress flex-grow-1" style="height: 6px">
+                <div class="progress-bar" :style="{ width: pct(s.key)+'%', backgroundColor: 'var(--g)' }"></div>
+              </div>
+              <span class="text-secondary" style="font-size: 11px; min-width: 24px; text-align: right">{{ count(s.key) }}</span>
+            </div>
           </div>
         </div>
       </div>
 
       <!-- Recent Activity -->
-      <div class="card">
-        <div class="card-hd">
-          <h3>Recent Activity</h3>
-          <div style="display:flex;border:1px solid var(--s200);border-radius:6px;overflow:hidden;font-size:11.5px">
-            <button @click="activitySort='newest'" :style="{ background: activitySort==='newest' ? 'var(--g)' : 'transparent', color: activitySort==='newest' ? '#fff' : 'var(--s500)', border:'none', padding:'4px 10px', cursor:'pointer', fontWeight:600 }">Terbaru</button>
-            <button @click="activitySort='oldest'" :style="{ background: activitySort==='oldest' ? 'var(--g)' : 'transparent', color: activitySort==='oldest' ? '#fff' : 'var(--s500)', border:'none', padding:'4px 10px', cursor:'pointer', fontWeight:600, borderLeft:'1px solid var(--s200)' }">Terlama</button>
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Recent Activity</h5>
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn" :class="activitySort === 'newest' ? 'btn-success' : 'btn-outline-secondary'" @click="activitySort='newest'">Terbaru</button>
+              <button type="button" class="btn" :class="activitySort === 'oldest' ? 'btn-success' : 'btn-outline-secondary'" @click="activitySort='oldest'">Terlama</button>
+            </div>
           </div>
-        </div>
-        <div class="card-bd" style="padding:0">
-          <div v-if="activityList.length === 0" class="empty" style="padding:28px"><div class="ei">📋</div><p>No activity yet</p></div>
-          <div style="max-height:300px;overflow-y:auto">
-            <div v-for="log in sortedActivityList.slice(0,50)" :key="log.id"
-              style="display:flex;align-items:flex-start;gap:10px;padding:11px 16px;border-bottom:1px solid var(--s100)">
-              <span style="font-size:16px;margin-top:1px">{{ log.icon }}</span>
-              <div style="min-width:0">
-                <div style="font-size:12.5px;color:var(--s700);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ log.message }}</div>
-                <div style="font-size:11px;color:var(--s400)">{{ log.actor }} · {{ formatDate(log.at || log.created_at) }}</div>
+          <div class="card-body" style="padding: 0">
+            <div v-if="activityList.length === 0" class="empty-state" style="padding: 28px">
+              <div style="font-size: 32px; margin-bottom: 8px">📋</div>
+              <p class="text-secondary">No activity yet</p>
+            </div>
+            <div style="max-height: 300px; overflow-y: auto">
+              <div v-for="log in sortedActivityList.slice(0, 50)" :key="log.id" class="d-flex gap-2 p-3 border-bottom">
+                <span style="font-size: 18px; flex-shrink: 0">{{ log.icon }}</span>
+                <div style="min-width: 0; flex: 1">
+                  <div class="text-secondary" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ log.message }}</div>
+                  <div class="text-muted" style="font-size: 11px">{{ log.actor }} · {{ formatDate(log.at || log.created_at) }}</div>
+                </div>
               </div>
             </div>
           </div>
@@ -66,39 +96,154 @@
       </div>
     </div>
 
-    <!-- Card 3 + Card 4: My Requests & My Submitted Requests -->
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
-
-      <!-- Card 3: My Requests / My Tasks Right Now -->
-      <div class="card">
-        <div class="card-hd">
-          <h3>{{ auth.role === 'developer' ? 'My Requests' : 'My Tasks Right Now' }}</h3>
-          <div style="display:flex;align-items:center;gap:8px">
-            <div style="display:flex;border:1px solid var(--s200);border-radius:6px;overflow:hidden;font-size:11.5px">
-              <button @click="myRequestsSort='newest'" :style="{ background: myRequestsSort==='newest' ? 'var(--g)' : 'transparent', color: myRequestsSort==='newest' ? '#fff' : 'var(--s500)', border:'none', padding:'4px 10px', cursor:'pointer', fontWeight:600 }">Terbaru</button>
-              <button @click="myRequestsSort='oldest'" :style="{ background: myRequestsSort==='oldest' ? 'var(--g)' : 'transparent', color: myRequestsSort==='oldest' ? '#fff' : 'var(--s500)', border:'none', padding:'4px 10px', cursor:'pointer', fontWeight:600, borderLeft:'1px solid var(--s200)' }">Terlama</button>
+    <!-- Two-column section: My Requests & My Submitted Requests -->
+    <div class="row g-3 mb-4">
+      <!-- My Requests / My Tasks Right Now -->
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">{{ auth.role === 'developer' ? 'My Requests' : 'My Tasks Right Now' }}</h5>
+            <div class="d-flex align-items-center gap-2">
+              <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn" :class="myRequestsSort === 'newest' ? 'btn-success' : 'btn-outline-secondary'" @click="myRequestsSort='newest'">Terbaru</button>
+                <button type="button" class="btn" :class="myRequestsSort === 'oldest' ? 'btn-success' : 'btn-outline-secondary'" @click="myRequestsSort='oldest'">Terlama</button>
+              </div>
+              <RouterLink :to="{ name: auth.role === 'developer' ? 'requests' : 'my_tasks' }" class="text-decoration-none" style="font-size: 12px; color: var(--g); font-weight: 600">View All →</RouterLink>
             </div>
-            <RouterLink
-              :to="{ name: auth.role === 'developer' ? 'requests' : 'my_tasks' }"
-              style="font-size:12px;color:var(--g);text-decoration:none;font-weight:600">View All →</RouterLink>
+          </div>
+          <div class="card-body" style="padding: 0">
+            <div v-if="myRequestsItems.length === 0" class="empty-state" style="padding: 28px">
+              <div style="font-size: 32px; margin-bottom: 8px">🎉</div>
+              <p class="text-secondary">{{ auth.role === 'developer' ? 'No active requests' : 'No pending tasks!' }}</p>
+            </div>
+            <div style="max-height: 300px; overflow-y: auto">
+              <div v-for="req in sortedMyRequestsItems.slice(0, 50)" :key="req.id"
+                class="d-flex align-items-center gap-2 p-3 border-bottom"
+                style="cursor: pointer"
+                @click="$router.push({ name:'request-detail', params:{ id:req.id } })">
+                <div style="flex: 1; min-width: 0">
+                  <div class="fw-bold" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ req.title }}</div>
+                  <div class="text-secondary" style="font-size: 11px">{{ req.componentName || req.component_name }}</div>
+                </div>
+                <span class="badge" :class="'b-'+req.status" style="font-size: 10.5px; flex-shrink: 0">{{ reqStore.statusLabel(req.status) }}</span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="card-bd" style="padding:0">
-          <div v-if="myRequestsItems.length === 0" class="empty" style="padding:28px">
-            <div class="ei">🎉</div>
-            <p>{{ auth.role === 'developer' ? 'No active requests' : 'No pending tasks!' }}</p>
-          </div>
-          <div style="max-height:300px;overflow-y:auto">
-            <div v-for="req in sortedMyRequestsItems.slice(0, 50)" :key="req.id"
-              style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--s100);cursor:pointer"
-              @click="$router.push({ name:'request-detail', params:{ id:req.id } })">
-              <div style="flex:1;min-width:0">
-                <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ req.title }}</div>
-                <div style="font-size:11px;color:var(--s500)">{{ req.componentName || req.component_name }}</div>
-              </div>
-              <span class="badge" :class="'b-'+req.status" style="font-size:10.5px">{{ reqStore.statusLabel(req.status) }}</span>
+      </div>
+
+      <!-- My Submitted Requests / Portfolio / Component Library -->
+      <div class="col-12 col-lg-6">
+        <div class="card">
+          <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <h5 class="mb-0">{{ portfolioTitle }}</h5>
+            <div class="d-flex align-items-center gap-2">
+              <template v-if="auth.role !== 'super_admin'">
+                <span class="text-muted" style="font-size: 11.5px">{{ portfolioItems.length }} total</span>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn" :class="portfolioSort === 'newest' ? 'btn-success' : 'btn-outline-secondary'" @click="portfolioSort='newest'">Terbaru</button>
+                  <button type="button" class="btn" :class="portfolioSort === 'oldest' ? 'btn-success' : 'btn-outline-secondary'" @click="portfolioSort='oldest'">Terlama</button>
+                </div>
+              </template>
+              <RouterLink v-else :to="{ name:'components' }" class="text-decoration-none" style="font-size: 12px; color: var(--g); font-weight: 600">View →</RouterLink>
             </div>
           </div>
+          <div class="card-body">
+            <!-- super_admin: component library atomic breakdown -->
+            <template v-if="auth.role === 'super_admin'">
+              <div class="row g-2 mb-3">
+                <div v-for="lv in ATOMIC_LEVELS" :key="lv" class="col-6 col-sm-4 col-md-6 col-lg-4 col-xl-3">
+                  <div class="p-3 rounded border text-center" style="background: var(--s100)">
+                    <div class="fw-bold" style="font-size: 20px; color: var(--g)">{{ compStore.items.filter(c => c.atomicLevel === lv && c.status === 'done').length }}</div>
+                    <div class="text-secondary" style="font-size: 11px; margin-top: 2px; text-transform: capitalize">{{ lv }}</div>
+                  </div>
+                </div>
+              </div>
+              <hr class="my-2">
+              <div v-for="rt in REQUEST_TYPES.slice(0, 4)" :key="rt.value" class="d-flex align-items-center gap-2 mb-3">
+                <span class="badge" :class="'b-'+rt.value" style="min-width: 130px; justify-content: center; font-size: 10.5px">{{ rt.label }}</span>
+                <div class="progress flex-grow-1" style="height: 6px">
+                  <div class="progress-bar" :style="{ width: rtPct(rt.value)+'%', backgroundColor: 'var(--g)' }"></div>
+                </div>
+                <span class="text-muted" style="font-size: 11.5px; min-width: 20px; text-align: right">{{ rtCount(rt.value) }}</span>
+              </div>
+            </template>
+
+            <!-- other roles: list of submitted/portfolio requests -->
+            <template v-else>
+              <div v-if="portfolioItems.length === 0" class="empty-state" style="padding: 28px">
+                <div style="font-size: 32px; margin-bottom: 8px">📋</div>
+                <p class="text-secondary">No submitted requests yet.</p>
+              </div>
+              <div v-else style="max-height: 300px; overflow-y: auto">
+                <div v-for="req in sortedPortfolioItems.slice(0, 50)" :key="req.id"
+                  class="d-flex align-items-center gap-2 p-3 border-bottom"
+                  style="cursor: pointer"
+                  @click="$router.push({ name:'request-detail', params:{ id:req.id } })">
+                  <div style="flex: 1; min-width: 0">
+                    <div class="fw-bold" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ req.title }}</div>
+                    <div class="text-secondary" style="font-size: 11px">{{ req.componentName || req.component_name }}</div>
+                  </div>
+                  <span class="badge" :class="'b-'+req.status" style="font-size: 10.5px; flex-shrink: 0">{{ reqStore.statusLabel(req.status) }}</span>
+                  <span v-if="reqStore.getEngineerOwner(req) === auth.user?.name" title="Anda yang mengerjakan development ini" style="font-size: 13px">⚙️</span>
+                  <span v-else-if="reqStore.getDesignerOwner(req) === auth.user?.name" title="Anda yang mengerjakan design ini" style="font-size: 13px">🎨</span>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Flow Monitoring -->
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <div class="d-flex align-items-center gap-2">
+          <h5 class="mb-0">📡 Flow Monitoring</h5>
+          <span class="text-muted" style="font-size: 11.5px">{{ sortedFlowItems.length }} active in scope</span>
+        </div>
+        <div class="d-flex align-items-center gap-2">
+          <div class="btn-group btn-group-sm" role="group">
+            <button type="button" class="btn" :class="flowSort === 'newest' ? 'btn-success' : 'btn-outline-secondary'" @click="flowSort='newest'">Terbaru</button>
+            <button type="button" class="btn" :class="flowSort === 'oldest' ? 'btn-success' : 'btn-outline-secondary'" @click="flowSort='oldest'">Terlama</button>
+          </div>
+          <RouterLink :to="{ name: 'requests' }" class="btn btn-sm btn-outline-secondary text-decoration-none">View All →</RouterLink>
+        </div>
+      </div>
+      <div class="card-body" style="padding: 0">
+        <div v-if="sortedFlowItems.length === 0" class="empty-state" style="padding: 30px 20px">
+          <div style="font-size: 32px; margin-bottom: 8px">✅</div>
+          <p class="text-secondary">No active flows in your scope.</p>
+        </div>
+        <div v-else style="max-height: 300px; overflow-y: auto">
+          <div v-for="req in sortedFlowItems" :key="req.id"
+            class="p-3 border-bottom d-flex align-items-center gap-3"
+            :style="{ background: hoveredFlow === req.id ? 'var(--s100)' : '' }"
+            style="cursor: pointer"
+            @mouseenter="hoveredFlow = req.id" @mouseleave="hoveredFlow = null"
+            @click="$router.push({ name:'request-detail', params:{ id:req.id } })">
+            <div style="flex: 1; min-width: 0">
+              <div class="fw-bold" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ req.title }}</div>
+              <!-- Segmented workflow progress bar -->
+              <div class="d-flex gap-1 align-items-center mt-2">
+                <div v-for="(step, i) in reqStore.getWorkflowSteps(req.workflow)" :key="i"
+                  class="flex-grow-1"
+                  style="height: 3px; border-radius: 2px"
+                  :style="{ background: reqStore.pipeClass(step.status, req.status) === 'done' ? 'var(--g)' : reqStore.pipeClass(step.status, req.status) === 'active' ? 'var(--gold)' : 'var(--s200)' }">
+                </div>
+              </div>
+            </div>
+            <div class="d-flex flex-column align-items-end gap-1" style="flex-shrink: 0">
+              <span class="badge" :class="'b-'+req.status" style="font-size: 10px">{{ reqStore.statusLabel(req.status) }}</span>
+              <span class="text-muted" style="font-size: 10.5px">{{ req.componentName }}</span>
+            </div>
+          </div>
+        <!-- </div>
+      </div>
+    </div>
+  </div>
+</template>
+          </div> -->
         </div>
       </div>
 
