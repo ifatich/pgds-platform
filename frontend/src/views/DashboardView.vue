@@ -1,51 +1,7 @@
 <template>
   <div>
-    <!-- KPI Grid (4 columns, mobile-first responsive) -->
-    <div class="row g-3 mb-4">
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
-            <div style="font-size: 32px; margin-bottom: 8px">✅</div>
-            <div style="font-size: 24px; font-weight: bold; color: var(--g)">{{ stats.done }}</div>
-            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Published Components</div>
-            <span class="badge bg-success">All time</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
-            <div style="font-size: 32px; margin-bottom: 8px">🔄</div>
-            <div style="font-size: 24px; font-weight: bold; color: var(--blue)">{{ stats.active }}</div>
-            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Active Requests</div>
-            <span class="badge bg-info">In progress</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
-            <div style="font-size: 32px; margin-bottom: 8px">⏳</div>
-            <div style="font-size: 24px; font-weight: bold; color: var(--orange)">{{ stats.myTasks }}</div>
-            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">{{ auth.role === 'developer' ? 'My Active Requests' : 'My Pending Tasks' }}</div>
-            <span class="badge bg-warning">Needs action</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12 col-sm-6 col-lg-3">
-        <div class="card h-100">
-          <div class="card-body text-center">
-            <div style="font-size: 32px; margin-bottom: 8px">📦</div>
-            <div style="font-size: 24px; font-weight: bold; color: var(--purple)">{{ compStore.items.filter(c => c.status === 'done').length }}</div>
-            <div class="text-secondary" style="font-size: 14px; margin: 8px 0 4px">Total Components</div>
-            <span class="badge bg-info">In library</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    <!-- KPI Grid using StatGrid component -->
+    <StatGrid :stats="kpiStats" :columns="4" marginBottom="24px" />
 
     <!-- Two-column section: Status Overview & Recent Activity -->
     <div class="row g-3 mb-4">
@@ -354,6 +310,7 @@ import { useRequestsStore } from '@/stores/requests'
 import { useComponentsStore } from '@/stores/components'
 import { formatDate } from '@/composables/useFormat'
 import { api } from '@/composables/useApi'
+import { StatGrid } from '@/components/ui'
 
 const auth      = useAuthStore()
 const reqStore  = useRequestsStore()
@@ -365,6 +322,46 @@ const myRequestsSort  = ref('newest')
 const portfolioSort   = ref('newest')
 const flowSort        = ref('newest')
 const hoveredFlow     = ref(null)
+
+// ── KPI Stats for StatGrid component ─────────────────────────────────────
+const kpiStats = computed(() => [
+  {
+    id: 'published',
+    icon: '✅',
+    value: stats.value.done,
+    label: 'Published Components',
+    color: 'var(--g)',
+    badge: 'All time',
+    badgeType: 'success',
+  },
+  {
+    id: 'active',
+    icon: '🔄',
+    value: stats.value.active,
+    label: 'Active Requests',
+    color: 'var(--blue)',
+    badge: 'In progress',
+    badgeType: 'info',
+  },
+  {
+    id: 'mytasks',
+    icon: '⏳',
+    value: stats.value.myTasks,
+    label: auth.role === 'developer' ? 'My Active Requests' : 'My Pending Tasks',
+    color: 'var(--orange)',
+    badge: 'Needs action',
+    badgeType: 'warning',
+  },
+  {
+    id: 'components',
+    icon: '📦',
+    value: compStore.items.filter(c => c.status === 'done').length,
+    label: 'Total Components',
+    color: 'var(--purple)',
+    badge: 'In library',
+    badgeType: 'info',
+  },
+])
 
 // ── Recent Activity sort ─────────────────────────────────────────────────
 const sortedActivityList = computed(() => {

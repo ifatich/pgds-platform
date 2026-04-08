@@ -1,13 +1,10 @@
 <!-- MyTasksView.vue -->
 <template>
   <div>
-    <!-- Header -->
-    <div class="d-flex justify-content-between align-items-center mb-4">
-      <div>
-        <h2 class="mb-2">My Tasks</h2>
-        <p class="text-secondary">{{ taskFilter === 'active' ? activeTasks.length + ' tugas membutuhkan perhatian' : completedTasks.length + ' tugas telah diselesaikan' }}</p>
-      </div>
-    </div>
+    <PageHeader 
+      title="My Tasks" 
+      :subtitle="taskFilter === 'active' ? `${activeTasks.length} tugas membutuhkan perhatian` : `${completedTasks.length} tugas telah diselesaikan`"
+    />
 
     <!-- Filter Tabs (Bootstrap buttons) -->
     <div class="btn-group mb-4" role="group">
@@ -22,10 +19,11 @@
     </div>
 
     <!-- Empty State -->
-    <div v-if="displayedTasks.length === 0" class="empty-state">
-      <div style="font-size: 32px; margin-bottom: 8px">{{ taskFilter === 'active' ? '🎉' : '📭' }}</div>
-      <p class="text-secondary">{{ taskFilter === 'active' ? 'Tidak ada tugas aktif. Kamu sudah beres!' : 'Belum ada tugas yang diselesaikan.' }}</p>
-    </div>
+    <EmptyState 
+      v-if="displayedTasks.length === 0"
+      :icon="taskFilter === 'active' ? '🎉' : '📭'"
+      :message="taskFilter === 'active' ? 'Tidak ada tugas aktif. Kamu sudah beres!' : 'Belum ada tugas yang diselesaikan.'"
+    />
 
     <!-- Task Cards -->
     <div class="row g-3">
@@ -75,6 +73,7 @@ import { useRequestsStore } from '@/stores/requests'
 import { useUiStore } from '@/stores/menu'
 import { formatDate } from '@/composables/useFormat'
 import ActionModal from '@/components/requests/ActionModal.vue'
+import { PageHeader, EmptyState } from '@/components/ui'
 
 const auth = useAuthStore()
 const reqStore = useRequestsStore()

@@ -40,18 +40,13 @@
             
             <div v-if="state.act.needsLibrary" class="col-md-6">
               <label for="library" class="form-label">Library <span class="text-danger">*</span></label>
-              <select 
+              <Dropdown 
                 id="library"
-                v-model="form.library"
-                class="form-select"
-                :class="{ 'is-invalid': errors.library }"
-              >
-                <option value="">Pilih Library</option>
-                <option value="gwind">gwind</option>
-                <option value="kitvue">kitvue</option>
-                <option value="@pegadaian/kitvue">@pegadaian/kitvue</option>
-                <option value="__custom__">+ Tambah nama library lain...</option>
-              </select>
+                :model-value="form.library"
+                :options="libraryOptions"
+                placeholder="Pilih Library"
+                @update:model-value="form.library = $event"
+              />
               <div v-if="errors.library" class="invalid-feedback d-block">
                 {{ errors.library }}
               </div>
@@ -235,6 +230,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
+import { Dropdown } from '@/components/ui'
 
 const props  = defineProps({ state: Object })
 const emit   = defineEmits(['confirm','cancel'])
@@ -242,6 +238,13 @@ const auth   = useAuthStore()
 
 const fileInput   = ref(null)
 const showPreview = ref(false)
+
+const libraryOptions = [
+  { value: 'gwind', label: 'gwind' },
+  { value: 'kitvue', label: 'kitvue' },
+  { value: '@pegadaian/kitvue', label: '@pegadaian/kitvue' },
+  { value: '__custom__', label: '+ Tambah nama library lain...' },
+]
 
 const form = reactive({
   notes: '', version: '', score: null,

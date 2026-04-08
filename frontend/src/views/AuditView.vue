@@ -1,21 +1,18 @@
 <template>
   <div>
-    <!-- Section Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4">
-      <div>
-        <h2 class="h3 fw-bold mb-1">Audit Program</h2>
-        <p class="text-secondary fs-6 mb-0">{{ reqStore.auditQueue.length }} requests in audit pipeline</p>
-      </div>
-      <button v-if="auth.role === 'designer' || auth.isAdmin" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#triggerAuditModal">
-        + Trigger Audit
-      </button>
-    </div>
+    <PageHeader 
+      title="Audit Program" 
+      :subtitle="`${reqStore.auditQueue.length} requests in audit pipeline`"
+      :actionLabel="(auth.role === 'designer' || auth.isAdmin) ? '+ Trigger Audit' : null"
+      @action="openTriggerAuditModal"
+    />
 
     <!-- Empty State -->
-    <div v-if="reqStore.auditQueue.length === 0" class="empty-state">
-      <div class="empty-state-icon">🔍</div>
-      <p>No active audit requests</p>
-    </div>
+    <EmptyState 
+      v-if="reqStore.auditQueue.length === 0"
+      icon="🔍"
+      message="No active audit requests"
+    />
 
     <!-- Audit Request Cards -->
     <div v-else class="row g-3">
@@ -80,28 +77,26 @@
 
             <!-- Audit Reason -->
             <div class="mb-3">
-              <label for="reason" class="form-label">Audit Reason <span class="text-danger">*</span></label>
-              <select
-                id="reason"
+              <label class="form-label">Audit Reason <span class="text-danger">*</span></label>
+              <Dropdown
                 v-model="triggerForm.reason"
-                class="form-select"
-                required
-              >
-                <option value="">Select reason</option>
-                <option v-for="r in REASONS" :key="r" :value="r">{{ r }}</option>
-              </select>
+                :options="reasonOptions"
+                placeholder="Select reason"
+                variant="outline-secondary"
+                size="sm"
+              />
             </div>
 
             <!-- Priority -->
             <div class="mb-3">
-              <label for="priority" class="form-label">Priority</label>
-              <select
-                id="priority"
+              <label class="form-label">Priority</label>
+              <Dropdown
                 v-model="triggerForm.priority"
-                class="form-select"
-              >
-                <option v-for="p in PRIORITIES" :key="p" :value="p">{{ p }}</option>
-              </select>
+                :options="priorityOptions"
+                placeholder="Select priority"
+                variant="outline-secondary"
+                size="sm"
+              />
             </div>
 
             <!-- Notes -->
@@ -136,6 +131,8 @@ import { useRequestsStore } from '@/stores/requests'
 import { useUiStore } from '@/stores/menu'
 import { formatDate } from '@/composables/useFormat'
 import ActionModal from '@/components/requests/ActionModal.vue'
+import { PageHeader, EmptyState, Dropdown } from '@/components/ui'
+import { Modal as BootstrapModal } from 'bootstrap'
 
 const auth = useAuthStore()
 const reqStore = useRequestsStore()
@@ -144,6 +141,17 @@ const ui = useUiStore()
 const actionState = ref({ show: false })
 const REASONS = ['Token update','UI modernization','Accessibility review','Performance review','Breaking change','Deprecated dependency','Design spec mismatch']
 const PRIORITIES = ['Critical','High','Medium','Low']
+
+// Dropdown options
+const reasonOptions = computed(() => [
+  { value: '', label: 'Select reason' },
+  ...REASONS.map(r => ({ value: r, label: r }))
+])
+
+const priorityOptions = computed(() =>
+  PRIORITIES.map(p => ({ value: p, label: p }))
+)
+
 const triggerForm = ref({ componentName:'', reason:'', priority:'Medium', notes:'' })
 
 function openAction(req, act) {
@@ -176,5 +184,15 @@ async function submitTrigger() {
   } catch (e) {
     ui.showToast(e.message, 'err')
   }
+}
+
+function openTriggerAuditModal() {
+  if (auth.role !== 'designer' && !auth.isAdmin) {
+    ui.showToast('You do not have permission to trigger audits', 'err')
+    return
+  }
+  const modalElement = document.getElementById('triggerAuditModal')
+  const modal = new BootstrapModal(modalElement)
+  modal.show()
 }
 </script>

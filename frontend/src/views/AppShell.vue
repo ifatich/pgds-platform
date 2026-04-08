@@ -1,7 +1,11 @@
 <template>
   <div id="app">
-    <!-- SIDEBAR -->
-    <nav class="sidebar">
+    <!-- SIDEBAR (with mobile toggle) -->
+    <nav class="sidebar" :class="{ show: sidebarOpen }">
+      <div class="d-lg-none d-flex justify-content-end p-2">
+        <button class="btn btn-ghost btn-sm" @click="toggleSidebar">✕</button>
+      </div>
+
       <div class="sb-logo">
         <div class="sb-logo-row">
           <div class="sb-icon">P</div>
@@ -67,9 +71,18 @@
       </div>
     </nav>
 
+    <!-- Mobile overlay (closes sidebar when clicked) -->
+    <div
+      v-if="sidebarOpen"
+      @click="sidebarOpen = false"
+      class="d-lg-none"
+      style="position: fixed; inset: 0; background: rgba(0, 0, 0, 0.5); z-index: 999"
+    ></div>
+
     <!-- MAIN -->
     <div class="main">
       <div class="topbar">
+        <button class="btn btn-ghost btn-sm d-lg-none" @click="toggleSidebar" style="margin-right: 8px">☰ Menu</button>
         <div class="tb-title">{{ pageTitle }}</div>
         <div class="tb-right">
           <span class="role-pill" :class="auth.role">{{ roleLabel }}</span>
@@ -89,7 +102,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useMenuStore } from '@/stores/menu'
@@ -106,6 +119,13 @@ const reqStore  = useRequestsStore()
 const userStore = useUsersStore()
 const compStore = useComponentsStore()
 const dmStore   = useDataMasterStore()
+
+// Mobile sidebar state
+const sidebarOpen = ref(false)
+
+function toggleSidebar() {
+  sidebarOpen.value = !sidebarOpen.value
+}
 
 // Load data
 onMounted(async () => {
@@ -151,6 +171,7 @@ function isActive(viewName) {
 
 function navigate(viewName) {
   const nameMap = { my_tasks:'my_tasks', menu_settings:'menu_settings' }
+  sidebarOpen.value = false // Close sidebar after navigation on mobile
   router.push({ name: nameMap[viewName] || viewName })
 }
 

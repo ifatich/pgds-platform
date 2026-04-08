@@ -1,15 +1,11 @@
 <template>
   <div>
-    <!-- Section Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4">
-      <div>
-        <h2 class="h3 fw-bold mb-1">Component Requests</h2>
-        <p class="text-secondary fs-6 mb-0">{{ filteredItems.length }} requests ditemukan</p>
-      </div>
-      <button v-if="canCreate" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newRequestModal">
-        + New Request
-      </button>
-    </div>
+    <PageHeader 
+      title="Component Requests" 
+      :subtitle="`${filteredItems.length} requests ditemukan`"
+      actionLabel="+ New Request"
+      @action="openNewRequestModal"
+    />
 
     <!-- Filters -->
     <div class="row g-2 mb-4">
@@ -18,43 +14,54 @@
           <span class="input-group-text bg-white border-end-0">🔍</span>
           <input 
             type="text" 
-            class="form-control border-start-0" 
+            class="form-control border-start-0 p-2" 
             v-model="search" 
             placeholder="Search title, component..."
           >
         </div>
       </div>
       <div class="col-6 col-sm-auto">
-        <select class="form-select" v-model="filterStatus">
-          <option value="">All Status</option>
-          <option v-for="s in reqStore.ALL_STATUSES" :key="s.key" :value="s.key">{{ s.label }}</option>
-        </select>
+        <Dropdown 
+          v-model="filterStatus"
+          :options="statusOptions"
+          placeholder="All Status"
+          variant="outline-secondary"
+          size="sm"
+        />
       </div>
       <div class="col-6 col-sm-auto">
-        <select class="form-select" v-model="filterType">
-          <option value="">All Types</option>
-          <option v-for="t in reqTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
-        </select>
+        <Dropdown 
+          v-model="filterType"
+          :options="typeOptions"
+          placeholder="All Types"
+          variant="outline-secondary"
+          size="sm"
+        />
       </div>
       <div class="col-12 col-sm-auto">
-        <select class="form-select" v-model="filterPriority">
-          <option value="">All Priority</option>
-          <option v-for="p in priorities" :key="p" :value="p">{{ p }}</option>
-        </select>
+        <Dropdown 
+          v-model="filterPriority"
+          :options="priorityOptions"
+          placeholder="All Priority"
+          variant="outline-secondary"
+          size="sm"
+        />
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="reqStore.loading" class="empty-state">
-      <div class="empty-state-icon">⏳</div>
-      <p>Loading...</p>
-    </div>
+    <EmptyState 
+      v-if="reqStore.loading"
+      icon="⏳"
+      message="Loading..."
+    />
 
     <!-- Empty State -->
-    <div v-else-if="filteredItems.length === 0" class="empty-state">
-      <div class="empty-state-icon">📋</div>
-      <p>Tidak ada request ditemukan</p>
-    </div>
+    <EmptyState 
+      v-else-if="filteredItems.length === 0"
+      icon="📋"
+      message="Tidak ada request ditemukan"
+    />
 
     <!-- Request Cards Grid -->
     <div v-else class="row g-3">
@@ -187,6 +194,8 @@ import { useUiStore } from '@/stores/menu'
 import { formatDate } from '@/composables/useFormat'
 import RequestForm from '@/components/requests/RequestForm.vue'
 import ActionModal from '@/components/requests/ActionModal.vue'
+import { PageHeader, EmptyState, Dropdown } from '@/components/ui'
+import { Modal as BootstrapModal } from 'bootstrap'
 
 const auth           = useAuthStore()
 const reqStore       = useRequestsStore()
@@ -209,6 +218,20 @@ const reqTypes = [
   { value:'component_bug_fix', label:'Bug Fix' }, { value:'documentation_update', label:'Documentation' },
 ]
 const priorities = ['Critical','High','Medium','Low']
+
+// Dropdown options for selects
+const statusOptions = computed(() => [
+  { value: '', label: 'All Status' },
+  ...reqStore.ALL_STATUSES.map(s => ({ value: s.key, label: s.label }))
+])
+const typeOptions = computed(() => [
+  { value: '', label: 'All Types' },
+  ...reqTypes
+])
+const priorityOptions = computed(() => [
+  { value: '', label: 'All Priority' },
+  ...priorities.map(p => ({ value: p, label: p }))
+])
 
 const filteredItems = computed(() => reqStore.items.filter(r => {
   if (search.value && !r.title.toLowerCase().includes(search.value.toLowerCase()) && !(r.componentName||'').toLowerCase().includes(search.value.toLowerCase())) return false
@@ -265,5 +288,15 @@ async function handleCreate(payload) {
     if (modal) modal.hide()
     ui.showToast('✅ Request submitted!')
   } catch (e) { ui.showToast(e.message, 'err') }
+}
+
+function openNewRequestModal() {
+  if (!canCreate.value) {
+    ui.showToast('You do not have permission to create requests', 'err')
+    return
+  }
+  const modalElement = document.getElementById('newRequestModal')
+  const modal = new BootstrapModal(modalElement)
+  modal.show()
 }
 </script>

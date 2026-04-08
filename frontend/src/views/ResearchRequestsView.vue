@@ -1,15 +1,11 @@
 <template>
   <div>
-    <!-- Section Header -->
-    <div class="d-flex justify-content-between align-items-start mb-4">
-      <div>
-        <h2 class="h3 fw-bold mb-1">Research Requests</h2>
-        <p class="text-secondary fs-6 mb-0">{{ filteredItems.length }} requests ditemukan</p>
-      </div>
-      <button v-if="isLoggedIn" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newResearchModal">
-        + New Research Request
-      </button>
-    </div>
+    <PageHeader 
+      title="Research Requests" 
+      :subtitle="`${filteredItems.length} requests ditemukan`"
+      :actionLabel="isLoggedIn ? '+ New Research Request' : null"
+      @action="openNewResearchModal"
+    />
 
     <!-- Filters -->
     <div class="row g-2 mb-4">
@@ -25,24 +21,30 @@
         </div>
       </div>
       <div class="col-12 col-sm-auto">
-        <select class="form-select" v-model="filterStatus">
-          <option value="">All Status</option>
-          <option v-for="s in researchStore.statuses" :key="s.key" :value="s.key">{{ s.label }}</option>
-        </select>
+        <Dropdown 
+          v-model="filterStatus"
+          :options="filterStatusOptions"
+          placeholder="All Status"
+          variant="outline-secondary"
+          size="sm"
+          style="min-width: 150px"
+        />
       </div>
     </div>
 
     <!-- Loading State -->
-    <div v-if="researchStore.loading" class="empty-state">
-      <div class="empty-state-icon">⏳</div>
-      <p>Loading...</p>
-    </div>
+    <EmptyState 
+      v-if="researchStore.loading"
+      icon="⏳"
+      message="Loading..."
+    />
 
     <!-- Empty State -->
-    <div v-else-if="filteredItems.length === 0" class="empty-state">
-      <div class="empty-state-icon">📋</div>
-      <p>Tidak ada research request ditemukan</p>
-    </div>
+    <EmptyState 
+      v-else-if="filteredItems.length === 0"
+      icon="📋"
+      message="Tidak ada research request ditemukan"
+    />
 
     <!-- Request Cards -->
     <div v-else class="row g-3 mb-4">
@@ -101,18 +103,14 @@
             <div class="modal-body">
               <!-- What can we help -->
               <div class="mb-3">
-                <label for="whatWeHelp" class="form-label">What can we help? <span class="text-danger">*</span></label>
-                <select
-                  id="whatWeHelp"
+                <label class="form-label">What can we help? <span class="text-danger">*</span></label>
+                <Dropdown
                   v-model="formData.whatWeHelp"
-                  class="form-select"
-                  required
-                >
-                  <option value="">Select category...</option>
-                  <option v-for="cat in researchStore.helpCategories" :key="cat" :value="cat">
-                    {{ cat }}
-                  </option>
-                </select>
+                  :options="whatWeHelpOptions"
+                  placeholder="Select category..."
+                  variant="outline-secondary"
+                  size="sm"
+                />
               </div>
 
               <!-- Department -->
@@ -155,16 +153,14 @@
 
               <!-- Timeline -->
               <div class="mb-3">
-                <label for="timelineQuarter" class="form-label">Timeline (Quarter) <span class="text-danger">*</span></label>
-                <select
-                  id="timelineQuarter"
+                <label class="form-label">Timeline (Quarter) <span class="text-danger">*</span></label>
+                <Dropdown
                   v-model="formData.timelineQuarter"
-                  class="form-select"
-                  required
-                >
-                  <option value="">Select quarter...</option>
-                  <option v-for="q in researchStore.quarters" :key="q" :value="q">{{ q }}</option>
-                </select>
+                  :options="timelineOptions"
+                  placeholder="Select quarter..."
+                  variant="outline-secondary"
+                  size="sm"
+                />
               </div>
 
               <!-- Attachment -->
@@ -267,11 +263,13 @@
               <h6 class="fw-bold mb-2">Update Status</h6>
               <div class="row g-2">
                 <div class="col-12">
-                  <select v-model="updateFormData.status" class="form-select">
-                    <option v-for="s in researchStore.statuses" :key="s.key" :value="s.key">
-                      {{ s.label }}
-                    </option>
-                  </select>
+                  <Dropdown 
+                    v-model="updateFormData.status"
+                    :options="updateStatusOptions"
+                    placeholder="Select status..."
+                    variant="outline-secondary"
+                    size="sm"
+                  />
                 </div>
                 <div class="col-12">
                   <textarea v-model="updateFormData.notes" class="form-control" rows="2" placeholder="Add notes (optional)"></textarea>
@@ -295,9 +293,13 @@ import { ref, computed, onMounted } from 'vue';
 import { useResearchStore } from '@/stores/research';
 import { formatDate } from '@/composables/useFormat';
 import { useAuthStore } from '@/stores/auth';
+import { useUiStore } from '@/stores/menu';
+import { PageHeader, EmptyState, Dropdown } from '@/components/ui'
+import { Modal as BootstrapModal } from 'bootstrap'
 
 const researchStore = useResearchStore();
 const authStore = useAuthStore();
+const ui = useUiStore();
 const fileInputRef = ref(null);
 
 const search = ref('');
@@ -324,6 +326,26 @@ const updateFormData = ref({
 const user = computed(() => authStore.user || {});
 const isLoggedIn = computed(() => !!user.value.id);
 const canUpdate = computed(() => ['designer', 'super_admin'].includes(user.value.role));
+
+// Dropdown options
+const filterStatusOptions = computed(() => [
+  { value: '', label: 'All Status' },
+  ...researchStore.statuses.map(s => ({ value: s.key, label: s.label }))
+]);
+
+const whatWeHelpOptions = computed(() => [
+  { value: '', label: 'Select category...' },
+  ...researchStore.helpCategories.map(cat => ({ value: cat, label: cat }))
+]);
+
+const timelineOptions = computed(() => [
+  { value: '', label: 'Select quarter...' },
+  ...researchStore.quarters.map(q => ({ value: q, label: q }))
+]);
+
+const updateStatusOptions = computed(() => 
+  researchStore.statuses.map(s => ({ value: s.key, label: s.label }))
+);
 
 const filteredItems = computed(() => {
   return researchStore.items.filter(req => {
@@ -353,8 +375,6 @@ const visiblePages = computed(() => {
 });
 
 function handleFileDrop(event) {
-  const file = event.dataTransfer?.files?.[0];
-  if (!file) return;
 
   formData.value.attachmentName = file.name;
   const file = event.target.files?.[0];
@@ -416,6 +436,16 @@ async function deleteRequest() {
   } catch (err) {
     alert('Error: ' + (err.message || 'Failed to delete'));
   }
+}
+
+function openNewResearchModal() {
+  if (!isLoggedIn.value) {
+    ui.showToast('You must be logged in to create a research request', 'err')
+    return
+  }
+  const modalElement = document.getElementById('newResearchModal')
+  const modal = new BootstrapModal(modalElement)
+  modal.show()
 }
 
 onMounted(async () => {

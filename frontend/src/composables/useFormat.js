@@ -14,3 +14,5 @@ export function atomicColor(l) {
 export function initials(name = '') {
   return name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
 }
+
+export const LIBRARIES = ['Design System', 'Icon Library', 'Component Kit', 'Pattern Library']

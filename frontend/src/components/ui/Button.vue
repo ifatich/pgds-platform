@@ -1,34 +1,41 @@
 <template>
-  <button
-    :type="type"
-    :class="buttonClasses"
-    v-bind="$attrs"
-  >
-    <slot />
-  </button>
+    <button :type="type" class="btn" :class="[`btn-${variant}`, { 'btn-sm': size === 'sm', 'btn-lg': size === 'lg' }]"
+        :disabled="disabled || loading" v-bind="$attrs">
+        <span v-if="icon" style="margin-right: 4px">{{ icon }}</span>
+        <span v-if="loading" style="margin-right: 4px">⏳</span>
+        {{ label }}
+    </button>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-
-const props = defineProps({
-  variant: {
-    type: String,
-    default: 'primary',
-    validator: (value) => [
-      'primary', 'secondary', 'success', 'danger',
-      'warning', 'info', 'light', 'dark', 'link',
-      'outline-primary', 'outline-secondary'
-    ].includes(value),
-  },
-  type: { type: String, default: 'button' },
-  size: { type: String, default: '' },
-  disabled: { type: Boolean, default: false },
-})
-
-const buttonClasses = computed(() => {
-  const classes = ['btn', `btn-${props.variant}`]
-  if (props.size) classes.push(`btn-${props.size}`)
-  return classes
-})
+    defineProps({
+        label: {
+            type: String,
+            required: true,
+        },
+        type: {
+            type: String,
+            default: 'button', // button, submit, reset
+        },
+        variant: {
+            type: String,
+            default: 'primary', // primary, secondary, success, danger, warning, outline-primary, outline-secondary, etc.
+        },
+        size: {
+            type: String,
+            default: 'md', // sm, md, lg
+        },
+        icon: {
+            type: String,
+            default: null,
+        },
+        disabled: {
+            type: Boolean,
+            default: false,
+        },
+        loading: {
+            type: Boolean,
+            default: false,
+        },
+    })
 </script>

@@ -1,41 +1,52 @@
 <template>
   <div>
-    <div class="sh">
-      <div><h2>Component Library</h2><p>{{ doneComponents.length }} komponen dirilis</p></div>
-      <button v-if="canEdit" class="btn btn-primary" @click="openModal(null)">+ Add Component</button>
-    </div>
+    <!-- Header using PageHeader component -->
+    <PageHeader
+      title="Component Library"
+      :subtitle="`${doneComponents.length} komponen dirilis`"
+      :actionLabel="canEdit ? '+ Add Component' : null"
+      @action="openModal(null)"
+      :showAction="canEdit"
+    />
 
-    <!-- Library stats -->
-    <div class="ab-row" style="margin-bottom:18px">
-      <div class="ab-box">
-        <div class="ab-n" style="color:var(--purple,#7c3aed)">{{ doneComponents.length }}</div>
-        <div class="ab-l">Total</div>
+    <!-- Library stats using StatGrid component -->
+    <StatGrid :stats="kpiStats" :columns="4" marginBottom="24px" />
+
+    <!-- Filters (search + selects) -->
+    <div class="d-flex gap-2 mb-4 flex-wrap">
+      <div class="input-group" style="max-width: 300px">
+        <span class="input-group-text">🔍</span>
+        <input type="text" class="form-control" v-model="search" placeholder="Cari nama komponen...">
       </div>
-      <div v-for="lib in libraryStats" :key="lib.name" class="ab-box">
-        <div class="ab-n" style="color:var(--blue,#1d4ed8)">{{ lib.count }}</div>
-        <div class="ab-l">{{ lib.name }}</div>
-      </div>
+      <Dropdown 
+        v-model="filterLibrary"
+        :options="libraryOptions"
+        placeholder="All Libraries"
+        variant="outline-secondary"
+        size="sm"
+        style="min-width: 150px"
+      />
+      <Dropdown 
+        v-model="filterLevel"
+        :options="levelOptions"
+        placeholder="All Levels"
+        variant="outline-secondary"
+        size="sm"
+        style="min-width: 140px"
+      />
     </div>
 
-    <!-- Filters -->
-    <div class="fbar">
-      <div class="search-wrap"><span class="s-ic">🔍</span><input class="fi" v-model="search" placeholder="Cari nama komponen..."></div>
-      <select class="fs" style="width:150px" v-model="filterLibrary">
-        <option value="">All Libraries</option>
-        <option v-for="lib in availableLibraries" :key="lib" :value="lib">{{ lib }}</option>
-      </select>
-      <select class="fs" style="width:140px" v-model="filterLevel">
-        <option value="">All Levels</option>
-        <option v-for="l in LEVELS" :key="l" :value="l">{{ l }}</option>
-      </select>
+    <!-- Loading / Table -->
+    <div v-if="compStore.loading" class="empty-state">
+      <div style="font-size: 32px; margin-bottom: 8px">⏳</div>
+      <p>Loading...</p>
     </div>
-
-    <div v-if="compStore.loading" class="empty"><div class="ei">⏳</div><p>Loading...</p></div>
     <div v-else>
+      <!-- Table Card -->
       <div class="card">
-        <div class="tbl-wrap">
-          <table>
-            <thead>
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
               <tr>
                 <th>Nama Komponen</th>
                 <th>Level</th>
@@ -47,31 +58,36 @@
             </thead>
             <tbody>
               <tr v-if="paginated.length === 0">
-                <td colspan="6"><div class="empty"><div class="ei">📦</div><p>Belum ada komponen yang dirilis</p></div></td>
+                <td colspan="6">
+                  <div class="empty-state" style="padding: 40px 20px">
+                    <div style="font-size: 32px; margin-bottom: 8px">📦</div>
+                    <p>Belum ada komponen yang dirilis</p>
+                  </div>
+                </td>
               </tr>
               <tr v-for="c in paginated" :key="c.id">
                 <td>
-                  <div style="font-weight:600;font-size:13px">{{ c.name }}</div>
-                  <div v-if="c.description" style="font-size:11px;color:var(--s400);margin-top:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ c.description }}</div>
+                  <div class="fw-bold" style="font-size: 13px">{{ c.name }}</div>
+                  <div v-if="c.description" class="text-muted" style="font-size: 11px; margin-top: 2px; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{ c.description }}</div>
                 </td>
                 <td>
                   <span v-if="c.atomicLevel" class="badge" :class="'b-'+c.atomicLevel">{{ c.atomicLevel }}</span>
-                  <span v-else style="color:var(--s300)">—</span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td>
-                  <span v-if="c.library" class="badge b-backlog" style="font-size:10.5px;font-family:'JetBrains Mono',monospace">{{ c.library }}</span>
-                  <span v-else style="color:var(--s300)">—</span>
+                  <span v-if="c.library" class="badge bg-secondary" style="font-size: 10.5px; font-family: 'JetBrains Mono', monospace">{{ c.library }}</span>
+                  <span v-else class="text-muted">—</span>
                 </td>
                 <td>
-                  <span v-if="c.version" style="font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--s700)">v{{ c.version }}</span>
-                  <span v-else style="color:var(--s300)">—</span>
+                  <span v-if="c.version" style="font-family: 'JetBrains Mono', monospace; font-size: 12px">v{{ c.version }}</span>
+                  <span v-else class="text-muted">—</span>
                 </td>
-                <td style="font-size:11.5px;color:var(--s500)">{{ formatDate(c.updatedAt) }}</td>
+                <td class="text-muted" style="font-size: 11.5px">{{ formatDate(c.updatedAt) }}</td>
                 <td>
-                  <div style="display:flex;gap:4px;align-items:center">
-                    <a v-if="c.docLink" :href="c.docLink" target="_blank" class="btn btn-ghost btn-icon btn-sm" title="Lihat Dokumentasi">📄</a>
-                    <button v-if="canEdit" class="btn btn-ghost btn-icon btn-sm" @click="openModal(c)" title="Edit">✏️</button>
-                    <button v-if="canEdit" class="btn btn-danger btn-icon btn-sm" @click="doDelete(c)" title="Hapus">🗑</button>
+                  <div class="btn-group btn-group-sm" role="group">
+                    <a v-if="c.docLink" :href="c.docLink" target="_blank" class="btn btn-outline-secondary" title="Lihat Dokumentasi">📄</a>
+                    <button v-if="canEdit" class="btn btn-outline-secondary" @click="openModal(c)" title="Edit">✏️</button>
+                    <button v-if="canEdit" class="btn btn-outline-danger" @click="doDelete(c)" title="Hapus">🗑</button>
                   </div>
                 </td>
               </tr>
@@ -79,61 +95,100 @@
           </table>
         </div>
       </div>
-      <div class="pag">
-        <span class="pg-info">{{ filtered.length }} total</span>
-        <button class="pgb" :disabled="page<=1" @click="page--">‹</button>
-        <button v-for="p in pageNums" :key="p" class="pgb" :class="{ active: p===page }" @click="page=p">{{ p }}</button>
-        <button class="pgb" :disabled="page>=totalPages" @click="page++">›</button>
-      </div>
+
+      <!-- Pagination -->
+      <nav v-if="totalPages > 1" class="mt-4 d-flex justify-content-between align-items-center">
+        <span class="text-muted">{{ filtered.length }} total</span>
+        <ul class="pagination mb-0">
+          <li class="page-item" :class="{ disabled: page <= 1 }">
+            <button class="page-link" @click="page--">‹ Previous</button>
+          </li>
+          <li v-for="p in pageNums" :key="p" class="page-item" :class="{ active: p === page }">
+            <button class="page-link" @click="page = p">{{ p }}</button>
+          </li>
+          <li class="page-item" :class="{ disabled: page >= totalPages }">
+            <button class="page-link" @click="page++">Next ›</button>
+          </li>
+        </ul>
+      </nav>
     </div>
 
-    <!-- Modal -->
-    <Teleport to="body">
-      <transition name="fade">
-        <div v-if="showModal" class="overlay" @click.self="showModal = false">
-          <div class="modal lg">
-            <div class="mh"><h2>{{ editItem ? 'Edit Component' : 'Tambah Component' }}</h2><button class="btn btn-ghost btn-icon" @click="showModal = false">✕</button></div>
-            <div class="mb">
-              <div class="fr">
-                <div class="fg"><label class="fl">Nama Komponen <span class="req">*</span></label><input class="fi" v-model="cf.name" @input="autoSlug"><div class="fe" v-if="ce.name">{{ ce.name }}</div></div>
-                <div class="fg"><label class="fl">Slug <span class="req">*</span></label><input class="fi" v-model="cf.slug"><div class="fe" v-if="ce.slug">{{ ce.slug }}</div></div>
-              </div>
-              <div class="fr">
-                <div class="fg">
-                  <label class="fl">Atomic Level <span style="color:var(--s400);font-size:11px;font-weight:400">(opsional — kosongkan untuk variant)</span></label>
-                  <select class="fs" v-model="cf.atomicLevel">
-                    <option value="">— (variant / belum ditentukan)</option>
-                    <option v-for="l in LEVELS" :key="l" :value="l">{{ l }}</option>
-                  </select>
-                </div>
-                <div class="fg">
-                  <label class="fl">Library</label>
-                  <select class="fs" v-model="cf.library">
-                    <option value="">— (tanpa library)</option>
-                    <option v-for="lib in LIBRARIES" :key="lib" :value="lib">{{ lib }}</option>
-                    <option value="__custom__">+ Lainnya...</option>
-                  </select>
-                  <input v-if="cf.library === '__custom__'" class="fi" style="margin-top:8px" v-model="cf.customLibrary" placeholder="Nama library...">
-                </div>
-              </div>
-              <div class="fr">
-                <div class="fg"><label class="fl">Version</label><input class="fi" v-model="cf.version" placeholder="1.0.0"></div>
-                <div class="fg"><label class="fl">Link Dokumentasi</label><input class="fi" v-model="cf.docLink" placeholder="https://storybook.../docs"></div>
-              </div>
-              <div class="fg"><label class="fl">Description</label><textarea class="ft" v-model="cf.description" placeholder="Deskripsi singkat komponen..."></textarea></div>
-              <div class="fr">
-                <div class="fg"><label class="fl">Figma URL</label><input class="fi" v-model="cf.figmaUrl" placeholder="https://figma.com/..."></div>
-                <div class="fg"><label class="fl">Storybook URL</label><input class="fi" v-model="cf.storybookUrl" placeholder="https://storybook.io/..."></div>
-              </div>
-            </div>
-            <div class="mf">
-              <button class="btn btn-sec" @click="showModal = false">Cancel</button>
-              <button class="btn btn-primary" @click="save">{{ editItem ? 'Simpan' : 'Tambah' }}</button>
-            </div>
-          </div>
+    <!-- Modal Component -->
+    <Modal v-model="showModal" :title="editItem ? 'Edit Component' : 'Tambah Component'" size="lg" confirmLabel="Save" @confirm="save">
+      <!-- Row 1: Name + Slug -->
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+          <label for="compName" class="form-label">Nama Komponen <span class="text-danger">*</span></label>
+          <input id="compName" type="text" class="form-control" v-model="cf.name" @input="autoSlug">
+          <div v-if="ce.name" class="invalid-feedback d-block">{{ ce.name }}</div>
         </div>
-      </transition>
-    </Teleport>
+        <div class="col-12 col-md-6">
+          <label for="compSlug" class="form-label">Slug <span class="text-danger">*</span></label>
+          <input id="compSlug" type="text" class="form-control" v-model="cf.slug">
+          <div v-if="ce.slug" class="invalid-feedback d-block">{{ ce.slug }}</div>
+        </div>
+      </div>
+
+      <!-- Row 2: Atomic Level + Library -->
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+          <label class="form-label">Atomic Level <span class="text-muted" style="font-size: 11px">(opsional)</span></label>
+          <Dropdown 
+            v-model="cf.atomicLevel"
+            :options="[{ value: '', label: '— (variant / belum ditentukan)' }, ...LEVELS.map(l => ({ value: l, label: l }))]"
+            placeholder="Select level"
+            variant="outline-secondary"
+            size="sm"
+          />
+        </div>
+        <div class="col-12 col-md-6">
+          <label class="form-label">Library</label>
+          <Dropdown 
+            v-model="cf.library"
+            :options="[{ value: '', label: '— (tanpa library)' }, ...availableLibraries.map(lib => ({ value: lib, label: lib })), { value: '__custom__', label: '+ Lainnya...' }]"
+            placeholder="Select library"
+            variant="outline-secondary"
+            size="sm"
+          />
+          <input v-if="cf.library === '__custom__'" type="text" class="form-control mt-2" v-model="cf.customLibrary" placeholder="Nama library...">
+        </div>
+      </div>
+
+      <!-- Row 3: Version + Doc Link -->
+      <div class="row g-3 mb-3">
+        <div class="col-12 col-md-6">
+          <label for="version" class="form-label">Version</label>
+          <input id="version" type="text" class="form-control" v-model="cf.version" placeholder="1.0.0">
+        </div>
+        <div class="col-12 col-md-6">
+          <label for="docLink" class="form-label">Link Dokumentasi</label>
+          <input id="docLink" type="text" class="form-control" v-model="cf.docLink" placeholder="https://storybook.../docs">
+        </div>
+      </div>
+
+      <!-- Description -->
+      <div class="mb-3">
+        <label for="description" class="form-label">Description</label>
+        <textarea id="description" class="form-control" v-model="cf.description" placeholder="Deskripsi singkat komponen..." rows="2"></textarea>
+      </div>
+
+      <!-- Figma + Storybook URLs -->
+      <div class="row g-3">
+        <div class="col-12 col-md-6">
+          <label for="figmaUrl" class="form-label">Figma URL</label>
+          <input id="figmaUrl" type="text" class="form-control" v-model="cf.figmaUrl" placeholder="https://figma.com/...">
+        </div>
+        <div class="col-12 col-md-6">
+          <label for="storybookUrl" class="form-label">Storybook URL</label>
+          <input id="storybookUrl" type="text" class="form-control" v-model="cf.storybookUrl" placeholder="https://storybook.io/...">
+        </div>
+      </div>
+
+      <template #footer>
+        <button type="button" class="btn btn-secondary" @click="showModal = false">Cancel</button>
+        <button type="button" class="btn btn-primary" @click="save">{{ editItem ? 'Simpan' : 'Tambah' }}</button>
+      </template>
+    </Modal>
   </div>
 </template>
 
@@ -143,6 +198,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useComponentsStore } from '@/stores/components'
 import { useUiStore } from '@/stores/menu'
 import { formatDate, LIBRARIES } from '@/composables/useFormat'
+import { PageHeader, StatGrid, Modal, Dropdown } from '@/components/ui'
 
 const auth      = useAuthStore()
 const compStore = useComponentsStore()
@@ -164,6 +220,20 @@ const canEdit = computed(() => ['engineer','super_admin'].includes(auth.role))
 
 const doneComponents = computed(() => compStore.items.filter(c => c.status === 'done' && c.isActive))
 
+// KPI Stats for StatGrid
+const kpiStats = computed(() => {
+  const baseStats = [
+    { id: 'total', icon: '📦', value: doneComponents.value.length, label: 'Total Components', color: 'var(--purple)' },
+  ]
+  return [...baseStats, ...libraryStats.value.map(lib => ({
+    id: lib.name,
+    icon: '📚',
+    value: lib.count,
+    label: lib.name,
+    color: 'var(--blue)',
+  }))]
+})
+
 const filtered = computed(() => doneComponents.value.filter(c => {
   if (search.value && !c.name.toLowerCase().includes(search.value.toLowerCase())) return false
   if (filterLevel.value && c.atomicLevel !== filterLevel.value) return false
@@ -175,6 +245,18 @@ const availableLibraries = computed(() => {
   const fromData = doneComponents.value.map(c => c.library).filter(Boolean)
   return [...new Set([...LIBRARIES, ...fromData])].sort()
 })
+
+// Dropdown options for filter and modal
+const levelOptions = computed(() => [
+  { value: '', label: 'All Levels' },
+  ...LEVELS.map(l => ({ value: l, label: l }))
+])
+
+const libraryOptions = computed(() => [
+  { value: '', label: 'All Libraries' },
+  ...availableLibraries.value.map(lib => ({ value: lib, label: lib })),
+  { value: '__custom__', label: '+ Lainnya...' }
+])
 
 const libraryStats = computed(() => {
   const map = {}

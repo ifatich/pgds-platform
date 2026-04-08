@@ -18,18 +18,13 @@
 
       <div class="col-md-6">
         <label for="requestType" class="form-label">Request Type <span class="text-danger">*</span></label>
-        <select
+        <Dropdown
           id="requestType"
-          v-model="f.requestType"
-          class="form-select"
-          :class="{ 'is-invalid': e.requestType }"
-          @change="onTypeChange"
-        >
-          <option value="">Select type</option>
-          <optgroup v-for="group in groupedReqTypes" :key="group.category" :label="group.category">
-            <option v-for="t in group.items" :key="t.value" :value="t.value">{{ t.label }}</option>
-          </optgroup>
-        </select>
+          :model-value="f.requestType"
+          :options="groupedReqTypesForDropdown"
+          placeholder="Select type"
+          @update:model-value="(val) => { f.requestType = val; onTypeChange() }"
+        />
         <div v-if="e.requestType" class="invalid-feedback d-block">{{ e.requestType }}</div>
       </div>
     </div>
@@ -79,25 +74,24 @@
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <label for="priority" class="form-label">Priority</label>
-          <select
+          <Dropdown
             id="priority"
-            v-model="f.priority"
-            class="form-select"
-          >
-            <option v-for="p in PRIORITIES" :key="p" :value="p">{{ p }}</option>
-          </select>
+            :model-value="f.priority"
+            :options="PRIORITIES"
+            placeholder="Select priority"
+            @update:model-value="f.priority = $event"
+          />
         </div>
 
         <div class="col-md-6">
           <label for="impactLevel" class="form-label">Impact Level</label>
-          <select
+          <Dropdown
             id="impactLevel"
-            v-model="f.impactLevel"
-            class="form-select"
-          >
-            <option value="">Select</option>
-            <option v-for="l in IMPACTS" :key="l" :value="l">{{ l }}</option>
-          </select>
+            :model-value="f.impactLevel"
+            :options="IMPACTS"
+            placeholder="Select"
+            @update:model-value="f.impactLevel = $event"
+          />
         </div>
       </div>
 
@@ -137,13 +131,13 @@
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <label for="responsiveBehaviour" class="form-label">Responsive Behaviour</label>
-          <select
+          <Dropdown
             id="responsiveBehaviour"
-            v-model="f.responsiveBehaviour"
-            class="form-select"
-          >
-            <option v-for="r in RESP" :key="r" :value="r">{{ r }}</option>
-          </select>
+            :model-value="f.responsiveBehaviour"
+            :options="RESP"
+            placeholder="Select"
+            @update:model-value="f.responsiveBehaviour = $event"
+          />
         </div>
 
         <div class="col-md-6">
@@ -230,29 +224,25 @@
       <div class="row g-3 mb-4">
         <div class="col-md-6">
           <label for="timelineQuarter" class="form-label">Timeline (Quarter) <span class="text-danger">*</span></label>
-          <select
+          <Dropdown
             id="timelineQuarter"
-            v-model="f.timelineQuarter"
-            class="form-select"
-            :class="{ 'is-invalid': e.timelineQuarter }"
-          >
-            <option value="">Select quarter...</option>
-            <option v-for="q in QUARTERS" :key="q" :value="q">{{ q }}</option>
-          </select>
+            :model-value="f.timelineQuarter"
+            :options="QUARTERS"
+            placeholder="Select quarter..."
+            @update:model-value="f.timelineQuarter = $event"
+          />
           <div v-if="e.timelineQuarter" class="invalid-feedback d-block">{{ e.timelineQuarter }}</div>
         </div>
 
         <div v-if="requiresSeverityLevel" class="col-md-6">
           <label for="severityLevel" class="form-label">Severity Level <span class="text-danger">*</span></label>
-          <select
+          <Dropdown
             id="severityLevel"
-            v-model="f.severityLevel"
-            class="form-select"
-            :class="{ 'is-invalid': e.severityLevel }"
-          >
-            <option value="">Select level...</option>
-            <option v-for="s in SEVERITY_LEVELS" :key="s" :value="s">{{ s }}</option>
-          </select>
+            :model-value="f.severityLevel"
+            :options="SEVERITY_LEVELS"
+            placeholder="Select level..."
+            @update:model-value="f.severityLevel = $event"
+          />
           <div v-if="e.severityLevel" class="invalid-feedback d-block">{{ e.severityLevel }}</div>
         </div>
       </div>
@@ -305,6 +295,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useDataMasterStore } from '@/stores/dataMaster'
+import { Dropdown } from '@/components/ui'
 
 const emit = defineEmits(['submit','cancel'])
 const dmStore = useDataMasterStore()
@@ -317,6 +308,14 @@ const STATES     = computed(() => dmStore.settings.stateRequirements || [])
 const RESP       = computed(() => dmStore.settings.responsiveBehaviours || ['Responsive'])
 const QUARTERS   = computed(() => ['Q1', 'Q2', 'Q3', 'Q4'])
 const SEVERITY_LEVELS = computed(() => dmStore.settings.severityLevels || ['Minor', 'Medium', 'Major'])
+
+// Flatten request types for dropdown
+const flattenedReqTypes = computed(() => {
+  return REQ_TYPES.value.map(t => ({
+    value: t.value,
+    label: t.label
+  }))
+})
 
 // Group request types by category
 const groupedReqTypes = computed(() => {
@@ -338,6 +337,17 @@ const groupedReqTypes = computed(() => {
     groups[catKey].items.push(type)
   })
   return Object.values(groups)
+})
+
+// Format grouped types for Dropdown component
+const groupedReqTypesForDropdown = computed(() => {
+  return groupedReqTypes.value.map(group => ({
+    group: group.category,
+    items: group.items.map(t => ({
+      value: t.value,
+      label: t.label
+    }))
+  }))
 })
 
 // Get current request type object
