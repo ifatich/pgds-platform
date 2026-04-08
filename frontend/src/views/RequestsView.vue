@@ -1,7 +1,7 @@
 <template>
   <div>
     <PageHeader 
-      title="Component Requests" 
+      title="All Requests" 
       :subtitle="`${filteredItems.length} requests ditemukan`"
       actionLabel="+ New Request"
       @action="openNewRequestModal"
@@ -22,29 +22,22 @@
       </div>
       <div class="col-6 col-sm-auto">
         <Dropdown 
-          v-model="filterStatus"
-          :options="statusOptions"
-          placeholder="All Status"
+          :model-value="filterRequestType"
+          :options="requestTypeOptions"
+          placeholder="All Request Types"
           variant="outline-secondary"
           size="sm"
+          @update:model-value="filterRequestType = $event"
         />
       </div>
       <div class="col-6 col-sm-auto">
         <Dropdown 
-          v-model="filterType"
-          :options="typeOptions"
-          placeholder="All Types"
+          :model-value="filterStatus"
+          :options="statusOptions"
+          placeholder="All Status"
           variant="outline-secondary"
           size="sm"
-        />
-      </div>
-      <div class="col-12 col-sm-auto">
-        <Dropdown 
-          v-model="filterPriority"
-          :options="priorityOptions"
-          placeholder="All Priority"
-          variant="outline-secondary"
-          size="sm"
+          @update:model-value="filterStatus = $event"
         />
       </div>
     </div>
@@ -66,70 +59,68 @@
     <!-- Request Cards Grid -->
     <div v-else class="row g-3">
       <div v-for="req in paginated" :key="req.id" class="col-12">
-        <div class="card card-hover cursor-pointer" @click="$router.push({ name:'request-detail', params:{ id:req.id } })">
+        <div class="card card-hover cursor-pointer">
           <div class="card-body pb-2">
             <!-- Header: Title and Status Badge -->
             <div class="d-flex justify-content-between align-items-start mb-3">
-              <div class="flex-grow-1">
-                <h5 class="card-title fw-bold mb-1">{{ req.title }}</h5>
+              <div class="flex-grow-1" @click="handleCardClick(req)">
+                <!-- Component Request Title -->
+                <h5 v-if="isComponentRequest(req)" class="card-title fw-bold mb-1">{{ req.title }}</h5>
+                <!-- Research Request Title -->
+                <h5 v-else class="card-title fw-bold mb-1">{{ req.projectName }}</h5>
+                
                 <p class="card-text text-secondary small mb-0">
-                  <span>{{ req.componentName }}</span>
+                  <span v-if="isComponentRequest(req)">{{ req.componentName }}</span>
+                  <span v-else>{{ req.whatWeHelp }}</span>
                   <span class="mx-1">·</span>
                   <span>{{ formatDate(req.updatedAt) }}</span>
                 </p>
               </div>
-              <span class="badge ms-2" :class="'b-'+req.status">
-                {{ reqStore.statusLabel(req.status) }}
+              <span class="badge ms-2" :class="statusBadgeClass(req)">
+                {{ getStatusLabel(req) }}
               </span>
             </div>
 
             <!-- Badges Row -->
             <div class="d-flex flex-wrap gap-2 mb-3">
-              <span class="badge badge-pill" :class="'b-'+req.requestType">
-                {{ req.requestType?.replace(/_/g,' ') }}
-              </span>
-              <span class="badge badge-pill" :class="'b-'+(req.priority||'').toLowerCase()">
-                {{ req.priority }}
-              </span>
+              <!-- Component Request Badges -->
+              <template v-if="isComponentRequest(req)">
+                <span class="badge badge-pill" :class="'b-'+req.requestType">
+                  {{ req.requestType?.replace(/_/g,' ') }}
+                </span>
+                <span v-if="req.priority" class="badge badge-pill" :class="'b-'+(req.priority||'').toLowerCase()">
+                  {{ req.priority }}
+                </span>
+              </template>
+              
+              <!-- Research Request Badges -->
+              <template v-else>
+                <span class="badge badge-pill" style="background: var(--s100); color: var(--s600);">
+                  {{ req.whatWeHelp?.replace(/_/g,' ') }}
+                </span>
+                <span v-if="req.timelineQuarter" class="badge badge-pill" style="background: var(--s100); color: var(--s600);">
+                  {{ req.timelineQuarter }}
+                </span>
+              </template>
+              
               <span class="badge badge-pill" :class="'b-'+req.requesterRole">
-                {{ req.requesterRole }}
+                {{ req.requesterRole || 'User' }}
               </span>
               
               <!-- Requester -->
               <span 
-                v-if="reqStore.getRequesterName(req)" 
+                v-if="getRequesterName(req)" 
                 class="badge badge-pill"
                 style="background: var(--s100); color: var(--s600);"
               >
-                📝 {{ reqStore.getRequesterName(req) }}
-                <span v-if="reqStore.getRequesterTeam(req)" class="opacity-75">
-                  · {{ reqStore.getRequesterTeam(req) }}
-                </span>
-              </span>
-
-              <!-- Designer Owner -->
-              <span 
-                v-if="reqStore.getDesignerOwner(req)" 
-                class="badge badge-pill"
-                style="background: var(--purplel); color: var(--purple);"
-              >
-                🎨 {{ reqStore.getDesignerOwner(req) }}
-              </span>
-
-              <!-- Engineer Owner -->
-              <span 
-                v-if="reqStore.getEngineerOwner(req)" 
-                class="badge badge-pill"
-                style="background: var(--bluel); color: var(--blue);"
-              >
-                ⚙️ {{ reqStore.getEngineerOwner(req) }}
+                📝 {{ getRequesterName(req) }}
               </span>
             </div>
 
             <!-- Actions -->
-            <div v-if="availableActions(req).length > 0" class="d-flex flex-wrap gap-2" @click.stop>
+            <div v-if="getAvailableActions(req).length > 0" class="d-flex flex-wrap gap-2" @click.stop>
               <button 
-                v-for="act in availableActions(req)" 
+                v-for="act in getAvailableActions(req)" 
                 :key="act.action"
                 class="btn btn-sm"
                 :class="[
@@ -174,7 +165,7 @@
             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
-            <RequestForm @submit="handleCreate" @cancel="() => { const modal = bootstrap.Modal.getInstance(document.getElementById('newRequestModal')); modal.hide(); }" />
+            <RequestForm ref="formRef" @submit="handleCreate" @cancel="() => { const modal = bootstrap.Modal.getInstance(document.getElementById('newRequestModal')); modal.hide(); }" />
           </div>
         </div>
       </div>
@@ -187,6 +178,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useRequestsStore } from '@/stores/requests'
 import { useResearchStore } from '@/stores/research'
@@ -197,59 +189,106 @@ import ActionModal from '@/components/requests/ActionModal.vue'
 import { PageHeader, EmptyState, Dropdown } from '@/components/ui'
 import { Modal as BootstrapModal } from 'bootstrap'
 
+const router         = useRouter()
 const auth           = useAuthStore()
 const reqStore       = useRequestsStore()
 const researchStore  = useResearchStore()
 const ui             = useUiStore()
 
 const search         = ref('')
+const filterRequestType = ref('') // 'component', 'research', atau ''
 const filterStatus   = ref('')
-const filterType     = ref('')
-const filterPriority = ref('')
 const page           = ref(1)
 const PAGE_SIZE      = 12
 const actionState    = ref({ show: false })
+const formRef         = ref(null)
 
 const canCreate = computed(() => ['developer','designer','super_admin'].includes(auth.role))
 
-const reqTypes = [
-  { value:'new_component', label:'New Component' }, { value:'component_variant', label:'Variant' },
-  { value:'component_enhancement', label:'Enhancement' }, { value:'component_redesign', label:'Redesign' },
-  { value:'component_bug_fix', label:'Bug Fix' }, { value:'documentation_update', label:'Documentation' },
-]
-const priorities = ['Critical','High','Medium','Low']
-
 // Dropdown options for selects
+const requestTypeOptions = computed(() => [
+  { value: '', label: 'All Request Types' },
+  { value: 'component', label: '⚙️ Component Requests' },
+  { value: 'research', label: '📚 Research Requests' }
+])
+
 const statusOptions = computed(() => [
   { value: '', label: 'All Status' },
-  ...reqStore.ALL_STATUSES.map(s => ({ value: s.key, label: s.label }))
-])
-const typeOptions = computed(() => [
-  { value: '', label: 'All Types' },
-  ...reqTypes
-])
-const priorityOptions = computed(() => [
-  { value: '', label: 'All Priority' },
-  ...priorities.map(p => ({ value: p, label: p }))
+  ...(filterRequestType.value === 'research' 
+    ? researchStore.ALL_STATUSES?.map(s => ({ value: s.key, label: s.label })) || []
+    : reqStore.ALL_STATUSES?.map(s => ({ value: s.key, label: s.label })) || []
+  )
 ])
 
-const filteredItems = computed(() => reqStore.items.filter(r => {
-  if (search.value && !r.title.toLowerCase().includes(search.value.toLowerCase()) && !(r.componentName||'').toLowerCase().includes(search.value.toLowerCase())) return false
-  if (filterStatus.value   && r.status !== filterStatus.value)           return false
-  if (filterType.value     && r.requestType !== filterType.value)         return false
-  if (filterPriority.value && r.priority !== filterPriority.value)        return false
-  return true
-}))
+// Combine requests from both stores
+const allRequests = computed(() => {
+  const components = (reqStore.items || []).map(r => ({ ...r, _type: 'component' }))
+  const research = (researchStore.items || []).map(r => ({ ...r, _type: 'research' }))
+  return [...components, ...research].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+})
+
+const filteredItems = computed(() => {
+  return allRequests.value.filter(r => {
+    // Filter by request type (component vs research)
+    if (filterRequestType.value === 'component' && r._type !== 'component') return false
+    if (filterRequestType.value === 'research' && r._type !== 'research') return false
+    
+    // Filter by search
+    if (search.value) {
+      const searchLower = search.value.toLowerCase()
+      const searchIn = r._type === 'component' 
+        ? `${r.title} ${r.componentName}`.toLowerCase()
+        : `${r.projectName} ${r.whatWeHelp}`.toLowerCase()
+      if (!searchIn.includes(searchLower)) return false
+    }
+    
+    // Filter by status
+    if (filterStatus.value && r.status !== filterStatus.value) return false
+    
+    return true
+  })
+})
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredItems.value.length / PAGE_SIZE)))
 const paginated  = computed(() => filteredItems.value.slice((page.value-1)*PAGE_SIZE, page.value*PAGE_SIZE))
-const pageNumbers= computed(() => {
-  const pages = []
-  for (let i = Math.max(1, page.value-2); i <= Math.min(totalPages.value, page.value+2); i++) pages.push(i)
-  return pages
-})
 
-function availableActions(req) { return reqStore.getAvailableActions(req, auth.role, auth.user?.name, auth.user?.id) }
+// Helper functions
+function isComponentRequest(req) {
+  return req._type === 'component'
+}
+
+function statusBadgeClass(req) {
+  return req._type === 'component'
+    ? 'b-' + req.status
+    : 'b-' + (researchStore.statusBadgeClass?.(req.status) || req.status)
+}
+
+function getStatusLabel(req) {
+  return req._type === 'component'
+    ? reqStore.statusLabel(req.status)
+    : researchStore.statusLabel?.(req.status) || req.status
+}
+
+function getRequesterName(req) {
+  if (req._type === 'component') {
+    return reqStore.getRequesterName?.(req)
+  } else {
+    return req.requesterName || req.requesterId
+  }
+}
+
+function getAvailableActions(req) {
+  if (req._type === 'component') {
+    return reqStore.getAvailableActions(req, auth.role, auth.user?.name, auth.user?.id) || []
+  }
+  return []
+}
+
+function handleCardClick(req) {
+  if (req._type === 'component') {
+    router.push({ name: 'request-detail', params: { id: req.id } })
+  }
+}
 
 function openAction(req, act) {
   const startLog = act.autoName ? (req.logs||[]).find(l => l.action==='start_design' || l.action==='start_redesign') : null
@@ -266,9 +305,11 @@ async function handleAction(payload) {
 
 async function handleCreate(payload) {
   try {
+    console.log('📤 Creating request with payload:', payload)
     const isResearch = payload.requestType && payload.requestType.startsWith('research')
     
     if (isResearch) {
+      console.log('📚 Research request detected')
       const researchPayload = {
         whatWeHelp: payload.requestType.replace('research_', '').replace(/_/g, ' '),
         projectName: payload.projectName,
@@ -278,16 +319,45 @@ async function handleCreate(payload) {
         attachmentName: payload.attachmentName || null,
         attachmentDataUrl: payload.attachmentDataUrl || null,
       }
-      await researchStore.create(researchPayload)
+      console.log('🔄 Research payload:', researchPayload)
+      const result = await researchStore.create(researchPayload)
+      console.log('✅ Research request created:', result)
     } else {
-      await reqStore.create(payload)
+      console.log('⚙️ Component request detected')
+      const result = await reqStore.create(payload)
+      console.log('✅ Component request created:', result)
     }
-    // Close modal
-    const modalElement = document.getElementById('newRequestModal')
-    const modal = window.bootstrap.Modal.getInstance(modalElement)
-    if (modal) modal.hide()
-    ui.showToast('✅ Request submitted!')
-  } catch (e) { ui.showToast(e.message, 'err') }
+    
+    // Show success toast immediately
+    ui.showToast('✅ Request submitted successfully!', 'success')
+    console.log('📢 Toast shown')
+    
+    // Close modal after a short delay
+    setTimeout(() => {
+      const modalElement = document.getElementById('newRequestModal')
+      if (modalElement) {
+        const modal = BootstrapModal.getInstance(modalElement)
+        if (modal) {
+          modal.hide()
+          console.log('✨ Modal closed')
+        }
+      }
+      
+      // Reset form
+      if (formRef.value?.resetForm) {
+        formRef.value.resetForm()
+      }
+    }, 500)
+    
+  } catch (e) {
+    console.error('❌ Error creating request:', e)
+    ui.showToast(`Error: ${e.message || 'Failed to create request'}`, 'err')
+    
+    // Reset button state even on error
+    if (formRef.value?.resetForm) {
+      formRef.value.resetForm()
+    }
+  }
 }
 
 function openNewRequestModal() {

@@ -282,11 +282,12 @@
 
     <!-- Action Buttons -->
     <div class="d-flex gap-2 justify-content-end pt-4 border-top">
-      <button type="button" class="btn btn-secondary" @click="$emit('cancel')">
+      <button type="button" class="btn btn-secondary" @click="$emit('cancel')" :disabled="isSubmitting">
         Cancel
       </button>
-      <button type="submit" class="btn btn-primary">
-        Submit Request
+      <button type="submit" class="btn btn-primary" :disabled="isSubmitting">
+        <span v-if="isSubmitting" class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+        {{ isSubmitting ? 'Submitting...' : 'Submit Request' }}
       </button>
     </div>
   </form>
@@ -396,6 +397,7 @@ const f = ref({
   attachmentDataUrl: '',
 })
 const e = ref({})
+const isSubmitting = ref(false)
 
 function onTypeChange() {
   e.value = {} // Clear errors when type changes
@@ -453,7 +455,44 @@ function submit() {
   }
   
   e.value = errs
-  if (Object.keys(errs).length) return
+  if (Object.keys(errs).length) {
+    console.log('❌ Form validation errors:', errs)
+    isSubmitting.value = false
+    return
+  }
+  
+  console.log('✅ Form validation passed, emitting submit event')
   emit('submit', { ...f.value })
 }
+
+function resetForm() {
+  f.value = {
+    title: '',
+    requestType: '',
+    componentName: '',
+    componentDescription: '',
+    useCase: '',
+    priority: 'Medium',
+    impactLevel: '',
+    designReferenceLink: '',
+    stateRequirements: [],
+    responsiveBehaviour: 'Responsive',
+    accessibilityRequirement: false,
+    businessGoal: '',
+    additionalNotes: '',
+    department: '',
+    projectName: '',
+    problemDescription: '',
+    timelineQuarter: '',
+    severityLevel: '',
+    attachmentName: '',
+    attachmentDataUrl: '',
+  }
+  e.value = {}
+  isSubmitting.value = false
+  console.log('🔄 Form resetted')
+}
+
+// Expose resetForm for parent component
+defineExpose({ resetForm })
 </script>
