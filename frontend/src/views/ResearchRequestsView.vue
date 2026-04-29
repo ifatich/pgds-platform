@@ -291,6 +291,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useResearchStore } from '@/stores/research';
+import { useDataMasterStore } from '@/stores/dataMaster';
 import { formatDate } from '@/composables/useFormat';
 import { useAuthStore } from '@/stores/auth';
 import { useUiStore } from '@/stores/menu';
@@ -298,6 +299,7 @@ import { PageHeader, EmptyState, Dropdown } from '@/components/ui'
 import { Modal as BootstrapModal } from 'bootstrap'
 
 const researchStore = useResearchStore();
+const dmStore = useDataMasterStore();
 const authStore = useAuthStore();
 const ui = useUiStore();
 const fileInputRef = ref(null);
@@ -335,7 +337,12 @@ const filterStatusOptions = computed(() => [
 
 const whatWeHelpOptions = computed(() => [
   { value: '', label: 'Select category...' },
-  ...researchStore.helpCategories.map(cat => ({ value: cat, label: cat }))
+  ...(
+    dmStore.settings.requestTypes
+      ?.filter(t => ['designer', 'illustrator', 'researcher'].includes(t.category))
+      .map(t => ({ value: t.value, label: t.label }))
+      || researchStore.helpCategories.map(cat => ({ value: cat, label: cat }))
+  )
 ]);
 
 const timelineOptions = computed(() => [
@@ -344,7 +351,12 @@ const timelineOptions = computed(() => [
 ]);
 
 const updateStatusOptions = computed(() => 
-  researchStore.statuses.map(s => ({ value: s.key, label: s.label }))
+  selectedRequest.value
+    ? researchStore.getWorkflowSteps(selectedRequest.value).map(s => ({
+        value: s.status,
+        label: s.label,
+      }))
+    : researchStore.statuses.map(s => ({ value: s.key, label: s.label }))
 );
 
 const filteredItems = computed(() => {
@@ -375,14 +387,25 @@ const visiblePages = computed(() => {
 });
 
 function handleFileDrop(event) {
-
-  formData.value.attachmentName = file.name;
-  const file = event.target.files?.[0];
+  const file = event.dataTransfer?.files?.[0];
   if (!file) return;
 
   formData.value.attachmentName = file.name;
   
   // Convert to base64
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    formData.value.attachmentDataUrl = e.target?.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function handleFileUpload(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  formData.value.attachmentName = file.name;
+
   const reader = new FileReader();
   reader.onload = (e) => {
     formData.value.attachmentDataUrl = e.target?.result;
@@ -449,6 +472,9 @@ function openNewResearchModal() {
 }
 
 onMounted(async () => {
+  if (!dmStore.settings.requestTypes?.length) {
+    await dmStore.fetchAll();
+  }
   await researchStore.fetchAll();
 });
 </script>

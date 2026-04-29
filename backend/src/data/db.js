@@ -81,6 +81,8 @@ function initDb() {
       deadline TEXT,
       business_goal TEXT,
       additional_notes TEXT,
+      production_link TEXT,
+      metadata TEXT DEFAULT '{}',
       status TEXT NOT NULL DEFAULT 'backlog',
       workflow TEXT NOT NULL DEFAULT 'developer',
       audit_reason TEXT,
@@ -116,6 +118,7 @@ function initDb() {
       created_at TEXT NOT NULL
     );
 
+    DROP TABLE IF EXISTS research_requests;
     CREATE TABLE IF NOT EXISTS research_requests (
       id TEXT PRIMARY KEY,
       requester_id TEXT NOT NULL REFERENCES users(id),
@@ -129,7 +132,7 @@ function initDb() {
       timeline_quarter TEXT NOT NULL CHECK(timeline_quarter IN ('Q1','Q2','Q3','Q4')),
       attachment_name TEXT,
       attachment_data_url TEXT,
-      status TEXT NOT NULL DEFAULT 'submitted' CHECK(status IN ('submitted','in_progress','completed','on_hold')),
+      status TEXT NOT NULL DEFAULT 'backlog',
       notes TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
@@ -174,8 +177,162 @@ function initDb() {
       stateRequirements:    ['Default', 'Hover', 'Focus', 'Active', 'Disabled', 'Loading', 'Error', 'Empty'],
       responsiveBehaviours: ['Responsive', 'Desktop Only', 'Mobile Only', 'Fixed Width'],
       severityLevels:       ['Minor', 'Medium', 'Major'],
+      requestPipelines: {
+        engineer: [
+          'backlog',
+          'in_design',
+          'design_done',
+          'in_progress_code',
+          'need_review_designer',
+          'on_review_designer',
+          'done_review',
+          'need_publish',
+          'done',
+        ],
+        designer: [
+          'backlog',
+          'in_design',
+          'need_review_designer',
+          'on_review_designer',
+          'done_review',
+          'design_finish',
+        ],
+        illustrator: [
+          'backlog',
+          'in_design',
+          'need_review_designer',
+          'on_review_designer',
+          'done_review',
+          'design_finish',
+        ],
+        researcher: [
+          'backlog',
+          'in_progress_research',
+          'need_review_designer',
+          'on_review_designer',
+          'done_review',
+          'research_finish',
+        ],
+      },
+      requestActions: {
+        transitions: {
+          approve_validation: { from: ['need_design_validation'], next: 'backlog', roles: ['designer', 'super_admin'] },
+          start_design: { from: ['backlog'], next: 'in_design', roles: ['designer', 'super_admin'] },
+          finish_design: { from: ['in_design'], next: 'design_done', roles: ['designer', 'super_admin'] },
+          start_review: { from: ['need_review_designer'], next: 'on_review_designer', roles: ['designer', 'super_admin'] },
+          approve_review: { from: ['on_review_designer'], next: 'done_review', roles: ['designer', 'super_admin'] },
+          request_revision: { from: ['on_review_designer'], next: 'need_revision', roles: ['designer', 'super_admin'] },
+          start_audit: { from: ['need_audit'], next: 'on_audit', roles: ['designer', 'super_admin'] },
+          require_redesign: { from: ['on_audit'], next: 'need_redesign', roles: ['designer', 'super_admin'] },
+          audit_pass: { from: ['on_audit'], next: 'need_development_update', roles: ['designer', 'super_admin'] },
+          start_redesign: { from: ['need_redesign'], next: 'in_redesign', roles: ['designer', 'super_admin'] },
+          finish_redesign: { from: ['in_redesign'], next: 'redesign_done', roles: ['designer', 'super_admin'] },
+          start_dev: { from: ['design_done', 'redesign_done', 'need_development_update'], next: 'in_progress_code', roles: ['engineer', 'super_admin'] },
+          finish_dev: { from: ['in_progress_code'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+          submit_revision: { from: ['need_revision'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+          publish: { from: ['done_review', 'need_publish'], next: 'done', roles: ['engineer', 'super_admin'] },
+        },
+        ui: {},
+      },
+      formFields: {
+        engineer: [
+          { key: 'title', label: 'Title', type: 'text', required: true, placeholder: 'e.g. New DatePicker Component' },
+          { key: 'componentName', label: 'Component Name', type: 'text', required: true, placeholder: 'e.g. PgdDatePicker' },
+          { key: 'componentDescription', label: 'Component Description', type: 'textarea', required: true, rows: 3, placeholder: 'Describe the component...' },
+          { key: 'useCase', label: 'Use Case', type: 'textarea', required: true, rows: 3, placeholder: 'Where and how will it be used...' },
+          { key: 'priority', label: 'Priority', type: 'dropdown', options: 'priorities', required: false },
+          { key: 'impactLevel', label: 'Impact Level', type: 'dropdown', options: 'impactLevels', required: false },
+          { key: 'designReferenceLink', label: 'Design Reference Link', type: 'url', required: false, placeholder: 'https://figma.com/...' },
+          { key: 'stateRequirements', label: 'State Requirements', type: 'multi-select', options: 'stateRequirements', required: false },
+          { key: 'responsiveBehaviour', label: 'Responsive Behaviour', type: 'dropdown', options: 'responsiveBehaviours', required: false },
+          { key: 'accessibilityRequirement', label: 'Accessibility (WCAG)', type: 'checkbox', required: false },
+          { key: 'referenceProduct', label: 'Reference Product', type: 'text', required: false, placeholder: 'e.g. Ant Design, Material UI' },
+          { key: 'interactionBehaviour', label: 'Interaction Behaviour', type: 'textarea', rows: 3, required: false, placeholder: 'Describe interactions...' },
+          { key: 'platform', label: 'Platform', type: 'dropdown', options: 'platforms', required: false },
+          { key: 'deadline', label: 'Deadline', type: 'date', required: false },
+          { key: 'businessGoal', label: 'Business Goal', type: 'textarea', rows: 3, required: false, placeholder: 'What business goal does this serve...' },
+          { key: 'additionalNotes', label: 'Additional Notes', type: 'textarea', rows: 3, required: false, placeholder: 'Any additional information...' },
+        ],
+        designer: [
+          { key: 'title', label: 'Project Title', type: 'text', required: true, placeholder: 'e.g. UI Redesign for Dashboard' },
+          { key: 'designReferenceLink', label: 'Design Reference Link', type: 'url', required: false, placeholder: 'https://figma.com/...' },
+          { key: 'productionLink', label: 'Production Link', type: 'url', required: false, placeholder: 'https://pegadaian.co.id/...' },
+          { key: 'referenceProduct', label: 'Reference Product / Inspiration', type: 'text', required: false, placeholder: 'e.g. Dribbble link, competitor site' },
+          { key: 'problemDescription', label: 'Problem / Requirement', type: 'textarea', required: true, rows: 3, placeholder: 'Describe the design challenge...' },
+          { key: 'priority', label: 'Priority', type: 'dropdown', options: 'priorities', required: false },
+          { key: 'impactLevel', label: 'Impact Level', type: 'dropdown', options: 'impactLevels', required: false },
+          { key: 'platform', label: 'Platform', type: 'dropdown', options: 'platforms', required: false },
+          { key: 'deadline', label: 'Deadline', type: 'date', required: false },
+          { key: 'businessGoal', label: 'Business Goal', type: 'textarea', rows: 3, required: false, placeholder: 'What business goal does this serve...' },
+          { key: 'additionalNotes', label: 'Additional Notes', type: 'textarea', rows: 3, required: false, placeholder: 'Any additional information...' },
+        ],
+        illustrator: [
+          { key: 'title', label: 'Illustration Project Title', type: 'text', required: true, placeholder: 'e.g. Icon Set for Mobile App' },
+          { key: 'designReferenceLink', label: 'Moodboard / Reference Link', type: 'url', required: false, placeholder: 'https://figma.com/...' },
+          { key: 'productionLink', label: 'Final Asset Link', type: 'url', required: false, placeholder: 'https://storage.com/...' },
+          { key: 'problemDescription', label: 'Illustration Brief', type: 'textarea', required: true, rows: 4, placeholder: 'Describe the illustration style, quantity, and usage...' },
+          { key: 'priority', label: 'Priority', type: 'dropdown', options: 'priorities', required: false },
+          { key: 'deadline', label: 'Deadline', type: 'date', required: false },
+        ],
+        researcher: [
+          { key: 'title', label: 'Research Study Title', type: 'text', required: true, placeholder: 'e.g. User Experience Audit Q3' },
+          { key: 'designReferenceLink', label: 'Research Plan / Protocol Link', type: 'url', required: false, placeholder: 'https://docs.google.com/...' },
+          { key: 'productionLink', label: 'Research Report Link', type: 'url', required: false, placeholder: 'https://docs.google.com/...' },
+          { key: 'problemDescription', label: 'Research Objective', type: 'textarea', required: true, rows: 4, placeholder: 'What is the primary goal of this research?' },
+          { key: 'priority', label: 'Priority', type: 'dropdown', options: 'priorities', required: false },
+          { key: 'platform', label: 'Platform / Sample', type: 'dropdown', options: 'platforms', required: false },
+          { key: 'deadline', label: 'Deadline', type: 'date', required: false },
+        ],
+      },
     });
     db.prepare(`INSERT INTO data_master (id, settings) VALUES ('singleton', ?)`).run(dmDefaults);
+  }
+
+  // Back-fill requestPipelines/requestActions/formFields in data_master settings for existing databases.
+  try {
+    const row = db.prepare(`SELECT settings FROM data_master WHERE id='singleton'`).get();
+    if (row?.settings) {
+      const parsed = JSON.parse(row.settings);
+      let shouldUpdate = false;
+      if (!parsed.requestPipelines || typeof parsed.requestPipelines !== 'object') {
+        parsed.requestPipelines = {
+          engineer: ['backlog', 'in_design', 'design_done', 'in_progress_code', 'need_review_designer', 'on_review_designer', 'done_review', 'need_publish', 'done'],
+          designer: ['backlog', 'in_design', 'need_review_designer', 'on_review_designer', 'done_review', 'design_finish'],
+          illustrator: ['backlog', 'in_design', 'need_review_designer', 'on_review_designer', 'done_review', 'design_finish'],
+          researcher: ['backlog', 'in_progress_research', 'need_review_designer', 'on_review_designer', 'done_review', 'research_finish'],
+        };
+        shouldUpdate = true;
+      }
+      if (!parsed.requestActions || typeof parsed.requestActions !== 'object') {
+        parsed.requestActions = {
+          transitions: {
+            approve_validation: { from: ['need_design_validation'], next: 'backlog', roles: ['designer', 'super_admin'] },
+            start_design: { from: ['backlog'], next: 'in_design', roles: ['designer', 'super_admin'] },
+            finish_design: { from: ['in_design'], next: 'design_done', roles: ['designer', 'super_admin'] },
+            start_review: { from: ['need_review_designer'], next: 'on_review_designer', roles: ['designer', 'super_admin'] },
+            approve_review: { from: ['on_review_designer'], next: 'done_review', roles: ['designer', 'super_admin'] },
+            request_revision: { from: ['on_review_designer'], next: 'need_revision', roles: ['designer', 'super_admin'] },
+            start_audit: { from: ['need_audit'], next: 'on_audit', roles: ['designer', 'super_admin'] },
+            require_redesign: { from: ['on_audit'], next: 'need_redesign', roles: ['designer', 'super_admin'] },
+            audit_pass: { from: ['on_audit'], next: 'need_development_update', roles: ['designer', 'super_admin'] },
+            start_redesign: { from: ['need_redesign'], next: 'in_redesign', roles: ['designer', 'super_admin'] },
+            finish_redesign: { from: ['in_redesign'], next: 'redesign_done', roles: ['designer', 'super_admin'] },
+            start_dev: { from: ['design_done', 'redesign_done', 'need_development_update'], next: 'in_progress_code', roles: ['engineer', 'super_admin'] },
+            finish_dev: { from: ['in_progress_code'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+            submit_revision: { from: ['need_revision'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+            publish: { from: ['done_review', 'need_publish'], next: 'done', roles: ['engineer', 'super_admin'] },
+          },
+          ui: {},
+        };
+        shouldUpdate = true;
+      }
+
+      if (shouldUpdate) {
+        db.prepare(`UPDATE data_master SET settings=? WHERE id='singleton'`).run(JSON.stringify(parsed));
+      }
+    }
+  } catch (e) {
+    console.warn('request workflow config migration:', e.message);
   }
 
   // ── MIGRATIONS (run safely after table creation) ──────────────────────────
@@ -193,6 +350,11 @@ function initDb() {
   try { db.exec(`ALTER TABLE components ADD COLUMN doc_link TEXT`); } catch {}
   // Add component_name snapshot to publish logs
   try { db.exec(`ALTER TABLE request_logs ADD COLUMN component_name TEXT`); } catch {}
+  
+  // New columns for dynamic requests
+  try { db.exec(`ALTER TABLE requests ADD COLUMN production_link TEXT`); } catch {}
+  try { db.exec(`ALTER TABLE requests ADD COLUMN metadata TEXT DEFAULT '{}'`); } catch {}
+  
   // Recreate components table to make atomic_level nullable (for variant components)
   try {
     const colInfo = db.pragma('table_info(components)');

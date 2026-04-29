@@ -29,256 +29,124 @@
       </div>
     </div>
 
-    <!-- ═══ COMPONENT REQUEST FIELDS ═══ -->
-    <template v-if="isComponentRequest">
-      
-      <div class="mb-3">
-        <label for="componentName" class="form-label">Component Name <span class="text-danger">*</span></label>
-        <input
-          id="componentName"
-          v-model="f.componentName"
-          type="text"
-          class="form-control"
-          :class="{ 'is-invalid': e.componentName }"
-          placeholder="e.g. PgdDatePicker"
-        >
-        <div v-if="e.componentName" class="invalid-feedback d-block">{{ e.componentName }}</div>
-      </div>
-
-      <div class="mb-3">
-        <label for="componentDescription" class="form-label">Component Description <span class="text-danger">*</span></label>
-        <textarea
-          id="componentDescription"
-          v-model="f.componentDescription"
-          class="form-control"
-          :class="{ 'is-invalid': e.componentDescription }"
-          placeholder="Describe the component..."
-          rows="3"
-        ></textarea>
-        <div v-if="e.componentDescription" class="invalid-feedback d-block">{{ e.componentDescription }}</div>
-      </div>
-
-      <div class="mb-3">
-        <label for="useCase" class="form-label">Use Case <span class="text-danger">*</span></label>
-        <textarea
-          id="useCase"
-          v-model="f.useCase"
-          class="form-control"
-          :class="{ 'is-invalid': e.useCase }"
-          placeholder="Where and how will it be used..."
-          rows="3"
-        ></textarea>
-        <div v-if="e.useCase" class="invalid-feedback d-block">{{ e.useCase }}</div>
-      </div>
-
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <label for="priority" class="form-label">Priority</label>
-          <Dropdown
-            id="priority"
-            :model-value="f.priority"
-            :options="PRIORITIES"
-            placeholder="Select priority"
-            @update:model-value="f.priority = $event"
-          />
-        </div>
-
-        <div class="col-md-6">
-          <label for="impactLevel" class="form-label">Impact Level</label>
-          <Dropdown
-            id="impactLevel"
-            :model-value="f.impactLevel"
-            :options="IMPACTS"
-            placeholder="Select"
-            @update:model-value="f.impactLevel = $event"
-          />
-        </div>
-      </div>
-
-      <div class="mb-3">
-        <label for="designReferenceLink" class="form-label">Design Reference Link</label>
-        <input
-          id="designReferenceLink"
-          v-model="f.designReferenceLink"
-          type="url"
-          class="form-control"
-          :class="{ 'is-invalid': e.designReferenceLink }"
-          placeholder="https://figma.com/..."
-        >
-        <div v-if="e.designReferenceLink" class="invalid-feedback d-block">{{ e.designReferenceLink }}</div>
-      </div>
-
-      <div class="mb-3">
-        <label class="form-label">State Requirements</label>
-        <div class="d-flex flex-wrap gap-2">
-          <button
-            v-for="state in STATES"
-            :key="state"
-            type="button"
-            class="btn btn-sm"
-            :class="[
-              f.stateRequirements.includes(state)
-                ? 'btn-success'
-                : 'btn-outline-secondary'
-            ]"
-            @click.prevent="toggleState(state)"
-          >
-            {{ state }}
-          </button>
-        </div>
-      </div>
-
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <label for="responsiveBehaviour" class="form-label">Responsive Behaviour</label>
-          <Dropdown
-            id="responsiveBehaviour"
-            :model-value="f.responsiveBehaviour"
-            :options="RESP"
-            placeholder="Select"
-            @update:model-value="f.responsiveBehaviour = $event"
-          />
-        </div>
-
-        <div class="col-md-6">
-          <div class="form-check mt-4">
+    <!-- ═══ DYNAMIC FORM FIELDS (from Data Master) ═══ -->
+    <template v-if="currentCategory && formFieldsForCategory.length > 0">
+      <div v-for="field in formFieldsForCategory" :key="field.key">
+        <!-- Skip title if it's already handled at the top -->
+        <template v-if="field.key !== 'title'">
+          <!-- Text Input -->
+          <div v-if="field.type === 'text'" class="mb-3">
+            <label :for="field.key" class="form-label">{{ field.label }} <span v-if="field.required" class="text-danger">*</span></label>
             <input
-              id="accessibilityRequirement"
-              v-model="f.accessibilityRequirement"
-              type="checkbox"
-              class="form-check-input"
+              :id="field.key"
+              v-model="f[field.key]"
+              type="text"
+              class="form-control"
+              :class="{ 'is-invalid': e[field.key] }"
+              :placeholder="field.placeholder"
             >
-            <label for="accessibilityRequirement" class="form-check-label">
-              Accessibility (WCAG)
-            </label>
+            <div v-if="e[field.key]" class="invalid-feedback d-block">{{ e[field.key] }}</div>
           </div>
-        </div>
-      </div>
 
-      <div class="mb-3">
-        <label for="businessGoal" class="form-label">Business Goal</label>
-        <textarea
-          id="businessGoal"
-          v-model="f.businessGoal"
-          class="form-control"
-          placeholder="What business objective does this serve?"
-          rows="3"
-        ></textarea>
-      </div>
+          <!-- Textarea -->
+          <div v-else-if="field.type === 'textarea'" class="mb-3">
+            <label :for="field.key" class="form-label">{{ field.label }} <span v-if="field.required" class="text-danger">*</span></label>
+            <textarea
+              :id="field.key"
+              v-model="f[field.key]"
+              class="form-control"
+              :class="{ 'is-invalid': e[field.key] }"
+              :placeholder="field.placeholder"
+              :rows="field.rows || 3"
+            ></textarea>
+            <div v-if="e[field.key]" class="invalid-feedback d-block">{{ e[field.key] }}</div>
+          </div>
 
-      <div class="mb-4">
-        <label for="additionalNotes" class="form-label">Additional Notes</label>
-        <textarea
-          id="additionalNotes"
-          v-model="f.additionalNotes"
-          class="form-control"
-          placeholder="Any other context..."
-          rows="3"
-        ></textarea>
-      </div>
+          <!-- URL Input -->
+          <div v-else-if="field.type === 'url'" class="mb-3">
+            <label :for="field.key" class="form-label">{{ field.label }} <span v-if="field.required" class="text-danger">*</span></label>
+            <input
+              :id="field.key"
+              v-model="f[field.key]"
+              type="url"
+              class="form-control"
+              :class="{ 'is-invalid': e[field.key] }"
+              :placeholder="field.placeholder"
+            >
+            <div v-if="e[field.key]" class="invalid-feedback d-block">{{ e[field.key] }}</div>
+          </div>
 
+          <!-- Date Input -->
+          <div v-else-if="field.type === 'date'" class="mb-3">
+            <label :for="field.key" class="form-label">{{ field.label }} <span v-if="field.required" class="text-danger">*</span></label>
+            <input
+              :id="field.key"
+              v-model="f[field.key]"
+              type="date"
+              class="form-control"
+              :class="{ 'is-invalid': e[field.key] }"
+            >
+            <div v-if="e[field.key]" class="invalid-feedback d-block">{{ e[field.key] }}</div>
+          </div>
+
+          <!-- Dropdown -->
+          <div v-else-if="field.type === 'dropdown'" class="mb-3">
+            <label :for="field.key" class="form-label">{{ field.label }} <span v-if="field.required" class="text-danger">*</span></label>
+            <Dropdown
+              :id="field.key"
+              :model-value="f[field.key]"
+              :options="getFieldOptions(field)"
+              :placeholder="'Select ' + field.label.toLowerCase()"
+              @update:model-value="f[field.key] = $event"
+            />
+            <div v-if="e[field.key]" class="invalid-feedback d-block">{{ e[field.key] }}</div>
+          </div>
+
+          <!-- Multi-Select (buttons) -->
+          <div v-else-if="field.type === 'multi-select'" class="mb-3">
+            <label class="form-label">{{ field.label }}</label>
+            <div class="d-flex flex-wrap gap-2">
+              <button
+                v-for="option in getFieldOptions(field)"
+                :key="option"
+                type="button"
+                class="btn btn-sm"
+                :class="[
+                  (f[field.key] || []).includes(option)
+                    ? 'btn-success'
+                    : 'btn-outline-secondary'
+                ]"
+                @click.prevent="toggleMultiSelect(field.key, option)"
+              >
+                {{ option }}
+              </button>
+            </div>
+          </div>
+
+          <!-- Checkbox -->
+          <div v-else-if="field.type === 'checkbox'" class="mb-3">
+            <div class="form-check">
+              <input
+                :id="field.key"
+                v-model="f[field.key]"
+                type="checkbox"
+                class="form-check-input"
+              >
+              <label :for="field.key" class="form-check-label">
+                {{ field.label }}
+              </label>
+            </div>
+          </div>
+        </template>
+      </div>
     </template>
 
-    <!-- ═══ RESEARCH REQUEST FIELDS ═══ -->
-    <template v-if="isResearchRequest">
-      
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <label for="department" class="form-label">Department</label>
-          <input
-            id="department"
-            v-model="f.department"
-            type="text"
-            class="form-control"
-            placeholder="e.g. Product, Design"
-          >
-        </div>
-
-        <div class="col-md-6">
-          <label for="projectName" class="form-label">Project / Request Name <span class="text-danger">*</span></label>
-          <input
-            id="projectName"
-            v-model="f.projectName"
-            type="text"
-            class="form-control"
-            :class="{ 'is-invalid': e.projectName }"
-            placeholder="e.g. Dashboard Redesign"
-          >
-          <div v-if="e.projectName" class="invalid-feedback d-block">{{ e.projectName }}</div>
-        </div>
-      </div>
-
-      <div class="mb-4">
-        <label for="problemDescription" class="form-label">Problem / Need Description <span class="text-danger">*</span></label>
-        <textarea
-          id="problemDescription"
-          v-model="f.problemDescription"
-          class="form-control"
-          :class="{ 'is-invalid': e.problemDescription }"
-          placeholder="Please explain the problem or need..."
-          rows="4"
-        ></textarea>
-        <div v-if="e.problemDescription" class="invalid-feedback d-block">{{ e.problemDescription }}</div>
-      </div>
-
-      <div class="row g-3 mb-4">
-        <div class="col-md-6">
-          <label for="timelineQuarter" class="form-label">Timeline (Quarter) <span class="text-danger">*</span></label>
-          <Dropdown
-            id="timelineQuarter"
-            :model-value="f.timelineQuarter"
-            :options="QUARTERS"
-            placeholder="Select quarter..."
-            @update:model-value="f.timelineQuarter = $event"
-          />
-          <div v-if="e.timelineQuarter" class="invalid-feedback d-block">{{ e.timelineQuarter }}</div>
-        </div>
-
-        <div v-if="requiresSeverityLevel" class="col-md-6">
-          <label for="severityLevel" class="form-label">Severity Level <span class="text-danger">*</span></label>
-          <Dropdown
-            id="severityLevel"
-            :model-value="f.severityLevel"
-            :options="SEVERITY_LEVELS"
-            placeholder="Select level..."
-            @update:model-value="f.severityLevel = $event"
-          />
-          <div v-if="e.severityLevel" class="invalid-feedback d-block">{{ e.severityLevel }}</div>
-        </div>
-      </div>
-
-      <div class="mb-4">
-        <label for="attachment" class="form-label">Attachment (PDF, DOC, or Image)</label>
-        <div
-          class="border border-2 border-dashed rounded p-4 text-center cursor-pointer"
-          :class="f.attachmentName ? 'border-success bg-success-subtle' : 'border-secondary'"
-          @click="fileInputRef?.click()"
-          @dragover.prevent
-          @drop.prevent="handleFileDrop"
-          style="transition: all 0.2s;"
-        >
-          <div v-if="f.attachmentName" class="mb-3">
-            <div class="small fw-medium text-dark">{{ f.attachmentName }}</div>
-            <div class="small text-success">✓ File selected</div>
-          </div>
-          <div v-else>
-            <div style="font-size: 2rem" class="mb-2">📎</div>
-            <div class="small text-muted">Click or drag file here</div>
-            <div class="small text-muted mt-1" style="opacity: 0.7">PDF, DOC, DOCX, TXT, JPG, PNG</div>
-          </div>
-        </div>
-        <input
-          ref="fileInputRef"
-          id="attachment"
-          type="file"
-          accept=".pdf,.doc,.docx,.txt,.jpg,.png"
-          class="d-none"
-          @change="handleFileUpload"
-        />
-        <div v-if="e.attachmentName" class="invalid-feedback d-block mt-2">{{ e.attachmentName }}</div>
-      </div>
-
-    </template>
+    <!-- Empty State for unknown category -->
+    <div v-else-if="f.requestType" class="alert alert-info py-4 text-center">
+      <div class="mb-2">📋</div>
+      <div class="small fw-bold">Select a request type to see the form fields.</div>
+      <div class="small text-muted">Fields are dynamically loaded based on the chosen category.</div>
+    </div>
 
     <!-- Action Buttons -->
     <div class="d-flex gap-2 justify-content-end pt-4 border-top">
@@ -309,14 +177,7 @@ const STATES     = computed(() => dmStore.settings.stateRequirements || [])
 const RESP       = computed(() => dmStore.settings.responsiveBehaviours || ['Responsive'])
 const QUARTERS   = computed(() => ['Q1', 'Q2', 'Q3', 'Q4'])
 const SEVERITY_LEVELS = computed(() => dmStore.settings.severityLevels || ['Minor', 'Medium', 'Major'])
-
-// Flatten request types for dropdown
-const flattenedReqTypes = computed(() => {
-  return REQ_TYPES.value.map(t => ({
-    value: t.value,
-    label: t.label
-  }))
-})
+const FORM_FIELDS = computed(() => dmStore.settings.formFields || {})
 
 // Group request types by category
 const groupedReqTypes = computed(() => {
@@ -356,6 +217,24 @@ const currentReqType = computed(() => {
   return REQ_TYPES.value.find(t => t.value === f.value.requestType) || {}
 })
 
+// Get current category from the selected request type
+const currentCategory = computed(() => {
+  return currentReqType.value.category || null
+})
+
+// Get form fields for current category from Data Master
+const formFieldsForCategory = computed(() => {
+  if (!currentCategory.value || !FORM_FIELDS.value[currentCategory.value]) {
+    return []
+  }
+  return FORM_FIELDS.value[currentCategory.value]
+})
+
+const isKnownRequestType = computed(() => {
+  if (!f.value.requestType) return true
+  return REQ_TYPES.value.some(t => t.value === f.value.requestType)
+})
+
 // Component/Engineering request types
 const isComponentRequest = computed(() => {
   return currentReqType.value.category === 'engineer'
@@ -366,93 +245,59 @@ const isResearchRequest = computed(() => {
   return ['designer', 'illustrator', 'researcher'].includes(currentReqType.value.category)
 })
 
-// Designer types that require severity level: UI UX Enhancement, UI UX Audit
-const requiresSeverityLevel = computed(() => {
-  return ['research_ui_ux_enhancement', 'research_ui_ux_audit'].includes(f.value.requestType)
-})
-
 const f = ref({
   // Common
   title: '',
   requestType: '',
-  // Component request fields
-  componentName: '',
-  componentDescription: '',
-  useCase: '',
-  priority: 'Medium',
-  impactLevel: '',
-  designReferenceLink: '',
-  stateRequirements: [],
-  responsiveBehaviour: 'Responsive',
-  accessibilityRequirement: false,
-  businessGoal: '',
-  additionalNotes: '',
-  // Research request fields
-  department: '',
-  projectName: '',
-  problemDescription: '',
-  timelineQuarter: '',
-  severityLevel: '',
-  attachmentName: '',
-  attachmentDataUrl: '',
+  // Specific fields will be added dynamically to this object via v-model
 })
 const e = ref({})
 const isSubmitting = ref(false)
 
 function onTypeChange() {
   e.value = {} // Clear errors when type changes
-  f.value.severityLevel = '' // Reset severity level when type changes
 }
 
-function toggleState(s) {
-  const i = f.value.stateRequirements.indexOf(s)
-  if (i >= 0) f.value.stateRequirements.splice(i, 1)
-  else f.value.stateRequirements.push(s)
-}
-
-function handleFileDrop(event) {
-  const file = event.dataTransfer?.files?.[0]
-  if (file) {
-    f.value.attachmentName = file.name
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      f.value.attachmentDataUrl = e.target?.result
-    }
-    reader.readAsDataURL(file)
+// Helper: Get options for a dropdown/multi-select field from Data Master
+function getFieldOptions(field) {
+  if (Array.isArray(field.options)) {
+    return field.options
   }
+  if (typeof field.options === 'string') {
+    // Reference to a Data Master list (e.g., 'priorities' -> dmStore.settings.priorities)
+    return dmStore.settings[field.options] || []
+  }
+  return []
 }
 
-function handleFileUpload(event) {
-  const file = event.target.files?.[0]
-  if (!file) return
-  f.value.attachmentName = file.name
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    f.value.attachmentDataUrl = e.target?.result
+// Helper: Toggle multi-select value
+function toggleMultiSelect(fieldKey, option) {
+  const arr = f.value[fieldKey] || []
+  const idx = arr.indexOf(option)
+  if (idx >= 0) {
+    arr.splice(idx, 1)
+  } else {
+    arr.push(option)
   }
-  reader.readAsDataURL(file)
+  f.value[fieldKey] = [...arr] // Trigger reactivity
 }
 
 function submit() {
   const errs = {}
   if (!f.value.title) errs.title = 'Required'
   if (!f.value.requestType) errs.requestType = 'Required'
+  if (!isKnownRequestType.value) errs.requestType = 'Invalid request type, please reselect'
   
-  // Component request validation
-  if (isComponentRequest.value) {
-    if (!f.value.componentName) errs.componentName = 'Required'
-    if (!f.value.componentDescription) errs.componentDescription = 'Required'
-    if (!f.value.useCase) errs.useCase = 'Required'
-    if (f.value.designReferenceLink && !/^https?:\/\//.test(f.value.designReferenceLink)) errs.designReferenceLink = 'Must be a valid URL'
-  }
-  
-  // Research request validation
-  if (isResearchRequest.value) {
-    if (!f.value.projectName) errs.projectName = 'Required'
-    if (!f.value.problemDescription) errs.problemDescription = 'Required'
-    if (!f.value.timelineQuarter) errs.timelineQuarter = 'Required'
-    if (requiresSeverityLevel.value && !f.value.severityLevel) errs.severityLevel = 'Required'
-  }
+  // Validate dynamic fields if they exist
+  formFieldsForCategory.value.forEach(field => {
+    if (field.required && !f.value[field.key]) {
+      errs[field.key] = 'Required'
+    }
+    // URL validation
+    if (field.type === 'url' && f.value[field.key] && !/^https?:\/\//.test(f.value[field.key])) {
+      errs[field.key] = 'Must be a valid URL'
+    }
+  })
   
   e.value = errs
   if (Object.keys(errs).length) {
@@ -469,24 +314,6 @@ function resetForm() {
   f.value = {
     title: '',
     requestType: '',
-    componentName: '',
-    componentDescription: '',
-    useCase: '',
-    priority: 'Medium',
-    impactLevel: '',
-    designReferenceLink: '',
-    stateRequirements: [],
-    responsiveBehaviour: 'Responsive',
-    accessibilityRequirement: false,
-    businessGoal: '',
-    additionalNotes: '',
-    department: '',
-    projectName: '',
-    problemDescription: '',
-    timelineQuarter: '',
-    severityLevel: '',
-    attachmentName: '',
-    attachmentDataUrl: '',
   }
   e.value = {}
   isSubmitting.value = false

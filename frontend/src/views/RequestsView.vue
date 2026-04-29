@@ -64,14 +64,10 @@
             <!-- Header: Title and Status Badge -->
             <div class="d-flex justify-content-between align-items-start mb-3">
               <div class="flex-grow-1" @click="handleCardClick(req)">
-                <!-- Component Request Title -->
-                <h5 v-if="isComponentRequest(req)" class="card-title fw-bold mb-1">{{ req.title }}</h5>
-                <!-- Research Request Title -->
-                <h5 v-else class="card-title fw-bold mb-1">{{ req.projectName }}</h5>
+                <h5 class="card-title fw-bold mb-1">{{ req.title || req.projectName }}</h5>
                 
                 <p class="card-text text-secondary small mb-0">
-                  <span v-if="isComponentRequest(req)">{{ req.componentName }}</span>
-                  <span v-else>{{ req.whatWeHelp }}</span>
+                  <span>{{ req.componentName || req.whatWeHelp || req.requestType?.replace(/_/g,' ') }}</span>
                   <span class="mx-1">·</span>
                   <span>{{ formatDate(req.updatedAt) }}</span>
                 </p>
@@ -83,25 +79,18 @@
 
             <!-- Badges Row -->
             <div class="d-flex flex-wrap gap-2 mb-3">
-              <!-- Component Request Badges -->
-              <template v-if="isComponentRequest(req)">
-                <span class="badge badge-pill" :class="'b-'+req.requestType">
-                  {{ req.requestType?.replace(/_/g,' ') }}
-                </span>
-                <span v-if="req.priority" class="badge badge-pill" :class="'b-'+(req.priority||'').toLowerCase()">
-                  {{ req.priority }}
-                </span>
-              </template>
-              
-              <!-- Research Request Badges -->
-              <template v-else>
-                <span class="badge badge-pill" style="background: var(--s100); color: var(--s600);">
-                  {{ req.whatWeHelp?.replace(/_/g,' ') }}
-                </span>
-                <span v-if="req.timelineQuarter" class="badge badge-pill" style="background: var(--s100); color: var(--s600);">
-                  {{ req.timelineQuarter }}
-                </span>
-              </template>
+              <span class="badge badge-pill" :class="'b-'+req.requestType">
+                {{ req.requestType?.replace(/_/g,' ') }}
+              </span>
+              <span v-if="req.priority" class="badge badge-pill" :class="'b-'+(req.priority||'').toLowerCase()">
+                {{ req.priority }}
+              </span>
+              <span v-if="req.platform" class="badge badge-pill bg-light text-dark border">
+                {{ req.platform }}
+              </span>
+              <span v-if="req.timelineQuarter" class="badge badge-pill bg-light text-dark border">
+                {{ req.timelineQuarter }}
+              </span>
               
               <span class="badge badge-pill" :class="'b-'+req.requesterRole">
                 {{ req.requesterRole || 'User' }}
@@ -182,6 +171,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useRequestsStore } from '@/stores/requests'
 import { useResearchStore } from '@/stores/research'
+import { useDataMasterStore } from '@/stores/dataMaster'
 import { useUiStore } from '@/stores/menu'
 import { formatDate } from '@/composables/useFormat'
 import RequestForm from '@/components/requests/RequestForm.vue'
@@ -193,6 +183,7 @@ const router         = useRouter()
 const auth           = useAuthStore()
 const reqStore       = useRequestsStore()
 const researchStore  = useResearchStore()
+const dmStore        = useDataMasterStore()
 const ui             = useUiStore()
 
 const search         = ref('')
@@ -224,7 +215,7 @@ const statusOptions = computed(() => [
 const allRequests = computed(() => {
   const components = (reqStore.items || []).map(r => ({ ...r, _type: 'component' }))
   const research = (researchStore.items || []).map(r => ({ ...r, _type: 'research' }))
-  return [...components, ...research].sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
+  return [...components, ...research].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
 })
 
 const filteredItems = computed(() => {
@@ -251,6 +242,13 @@ const filteredItems = computed(() => {
 
 const totalPages = computed(() => Math.max(1, Math.ceil(filteredItems.value.length / PAGE_SIZE)))
 const paginated  = computed(() => filteredItems.value.slice((page.value-1)*PAGE_SIZE, page.value*PAGE_SIZE))
+const pageNumbers = computed(() => {
+  const pages = []
+  for (let i = 1; i <= totalPages.value; i++) {
+    pages.push(i)
+  }
+  return pages
+})
 
 // Helper functions
 function isComponentRequest(req) {
@@ -285,9 +283,8 @@ function getAvailableActions(req) {
 }
 
 function handleCardClick(req) {
-  if (req._type === 'component') {
-    router.push({ name: 'request-detail', params: { id: req.id } })
-  }
+  // Navigate to detail for both component and research requests
+  router.push({ name: 'request-detail', params: { id: req.id } })
 }
 
 function openAction(req, act) {
@@ -305,32 +302,13 @@ async function handleAction(payload) {
 
 async function handleCreate(payload) {
   try {
-    console.log('📤 Creating request with payload:', payload)
-    const isResearch = payload.requestType && payload.requestType.startsWith('research')
+    console.log('📤 Creating unified request with payload:', payload)
     
-    if (isResearch) {
-      console.log('📚 Research request detected')
-      const researchPayload = {
-        whatWeHelp: payload.requestType.replace('research_', '').replace(/_/g, ' '),
-        projectName: payload.projectName,
-        problemDescription: payload.problemDescription,
-        timelineQuarter: payload.timelineQuarter,
-        department: payload.department || null,
-        attachmentName: payload.attachmentName || null,
-        attachmentDataUrl: payload.attachmentDataUrl || null,
-      }
-      console.log('🔄 Research payload:', researchPayload)
-      const result = await researchStore.create(researchPayload)
-      console.log('✅ Research request created:', result)
-    } else {
-      console.log('⚙️ Component request detected')
-      const result = await reqStore.create(payload)
-      console.log('✅ Component request created:', result)
-    }
+    // Always use reqStore for new requests to support the dynamic unified architecture
+    const result = await reqStore.create(payload)
+    console.log('✅ Request created:', result)
     
-    // Show success toast immediately
     ui.showToast('✅ Request submitted successfully!', 'success')
-    console.log('📢 Toast shown')
     
     // Close modal after a short delay
     setTimeout(() => {
@@ -352,11 +330,6 @@ async function handleCreate(payload) {
   } catch (e) {
     console.error('❌ Error creating request:', e)
     ui.showToast(`Error: ${e.message || 'Failed to create request'}`, 'err')
-    
-    // Reset button state even on error
-    if (formRef.value?.resetForm) {
-      formRef.value.resetForm()
-    }
   }
 }
 
@@ -369,4 +342,19 @@ function openNewRequestModal() {
   const modal = new BootstrapModal(modalElement)
   modal.show()
 }
+
+// Load both component and research requests on mount
+onMounted(async () => {
+  try {
+    if (!dmStore.settings.requestTypes?.length) {
+      await dmStore.fetchAll?.()
+    }
+    await Promise.all([
+      reqStore.fetchAll?.(),
+      researchStore.fetchAll?.()
+    ])
+  } catch (e) {
+    console.error('Error loading requests:', e)
+  }
+})
 </script>

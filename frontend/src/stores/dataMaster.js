@@ -12,6 +12,10 @@ export const useDataMasterStore = defineStore('dataMaster', () => {
     stateRequirements: [],
     responsiveBehaviours: [],
     severityLevels: [],
+    requestPipelines: {},
+    requestPipelinesByType: {},
+    requestActions: { transitions: {}, ui: {} },
+    formFields: {},
   })
   const loading = ref(false)
 

@@ -3,13 +3,14 @@
     <!-- Header -->
     <div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
       <button class="btn btn-outline-secondary btn-sm" @click="$router.back()">← Back</button>
-      <h2 class="mb-0 flex-grow-1">{{ req.title }}</h2>
-      <span class="badge" :class="'b-'+req.status" style="font-size: 12px">{{ reqStore.statusLabel(req.status) }}</span>
+      <h2 class="mb-0 flex-grow-1">{{ req.title || req.projectName }}</h2>
+      <span class="badge" :class="'b-'+req.status" style="font-size: 12px">{{ getStatusLabel(req) }}</span>
+      
       <!-- Assignee indicators -->
-      <span v-if="req && reqStore.getDesignerOwner(req)" class="badge" style="background: var(--purplel, #f3e8ff); color: var(--purple, #7c3aed); font-size: 12px">
+      <span v-if="reqStore.getDesignerOwner(req)" class="badge" style="background: var(--purplel, #f3e8ff); color: var(--purple, #7c3aed); font-size: 12px">
         🎨 {{ reqStore.getDesignerOwner(req) }}
       </span>
-      <span v-if="req && reqStore.getEngineerOwner(req)" class="badge" style="background: var(--bluel, #dbeafe); color: var(--blue, #1d4ed8); font-size: 12px">
+      <span v-if="reqStore.getEngineerOwner(req)" class="badge" style="background: var(--bluel, #dbeafe); color: var(--blue, #1d4ed8); font-size: 12px">
         ⚙️ {{ reqStore.getEngineerOwner(req) }}
       </span>
       <button v-if="auth.isAdmin" class="btn btn-warning btn-sm" @click="showOverride = true">⚡ Override</button>
@@ -18,13 +19,13 @@
     <!-- Pipeline -->
     <div class="card mb-4">
       <div class="card-body p-3">
-        <div class="text-muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 10px">{{ wfLabel }} Pipeline</div>
-        <div class="d-flex align-items-center gap-2 flex-wrap">
-          <div v-for="(step, i) in wfSteps" :key="step.status" class="d-flex align-items-center gap-2">
-            <div class="badge" :class="reqStore.pipeClass(step.status, req.status)" style="padding: 8px 12px">{{ step.label }}</div>
-            <span v-if="i < wfSteps.length-1" style="color: var(--s300)">→</span>
-          </div>
-        </div>
+        <div class="text-muted" style="font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 16px">{{ wfLabel }} Pipeline</div>
+        <PipelineVisualization
+          :steps="wfSteps"
+          :currentStatus="req.status"
+          :getStatusClass="pipeClass"
+          :showLegend="true"
+        />
       </div>
     </div>
 
@@ -34,7 +35,7 @@
         <span style="font-size: 12px; font-weight: 600; color: var(--s600)">Actions:</span>
         <button v-for="act in availableActions" :key="act.action"
           class="btn btn-sm" :class="act.primary ? 'btn-primary' : act.danger ? 'btn-danger' : 'btn-outline-secondary'"
-          @click="openAction(act)">
+          @click="triggerAction(act)">
           {{ act.icon }} {{ act.label }}
         </button>
       </div>
@@ -54,9 +55,9 @@
             <div class="mb-4">
               <h6 class="mb-3">Request Info</h6>
               <div class="row g-3">
-                <div class="col-12 col-sm-6">
-                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Nama Komponen</div>
-                  <div class="fw-bold">{{ req.componentName }}</div>
+                <div v-if="req.componentName || req.projectName" class="col-12 col-sm-6">
+                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Project / Component</div>
+                  <div class="fw-bold">{{ req.componentName || req.projectName }}</div>
                 </div>
                 <div class="col-12 col-sm-6">
                   <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Type</div>
@@ -66,9 +67,17 @@
                   <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Priority</div>
                   <span class="badge" :class="'b-'+(req.priority||'').toLowerCase()">{{ req.priority }}</span>
                 </div>
-                <div class="col-12 col-sm-6">
+                <div v-if="req.platform" class="col-12 col-sm-6">
                   <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Platform</div>
                   <div>{{ req.platform }}</div>
+                </div>
+                <div v-if="req.department" class="col-12 col-sm-6">
+                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Department</div>
+                  <div>{{ req.department }}</div>
+                </div>
+                <div v-if="req.timelineQuarter" class="col-12 col-sm-6">
+                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Timeline</div>
+                  <span class="badge bg-secondary">{{ req.timelineQuarter }}</span>
                 </div>
                 <div class="col-12">
                   <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Requester</div>
@@ -91,74 +100,65 @@
 
             <hr class="my-4">
 
-            <!-- Component Description -->
-            <div v-if="req.componentDescription" class="mb-4">
-              <h6 class="mb-2">Component Description</h6>
-              <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.componentDescription }}</p>
-            </div>
-
-            <!-- Use Case -->
-            <div v-if="req.useCase" class="mb-4">
-              <h6 class="mb-2">Use Case</h6>
-              <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.useCase }}</p>
-            </div>
-
-            <!-- Design Reference -->
-            <div v-if="req.designReferenceLink" class="mb-4">
-              <h6 class="mb-2">Design Reference</h6>
-              <a :href="req.designReferenceLink" target="_blank" class="btn btn-sm btn-outline-secondary">🎨 Open Figma ↗</a>
-            </div>
-
-            <!-- State Requirements -->
-            <div v-if="req.stateRequirements?.length" class="mb-4">
-              <h6 class="mb-2">State Requirements</h6>
-              <div class="d-flex flex-wrap gap-2">
-                <span v-for="s in req.stateRequirements" :key="s" class="badge bg-secondary">{{ s }}</span>
+            <!-- Request Content -->
+            <div>
+              <!-- Description -->
+              <div v-if="req.componentDescription || req.problemDescription" class="mb-4">
+                <h6 class="mb-2">Description / Objective</h6>
+                <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.componentDescription || req.problemDescription }}</p>
               </div>
-            </div>
 
-            <!-- Responsive Behaviour -->
-            <div v-if="req.responsiveBehaviour" class="mb-4">
-              <h6 class="mb-2">Responsive Behaviour</h6>
-              <span class="badge bg-secondary">{{ req.responsiveBehaviour }}</span>
-            </div>
-
-            <!-- Accessibility -->
-            <div v-if="req.accessibilityRequirement" class="mb-4">
-              <h6 class="mb-2">Accessibility</h6>
-              <span class="badge" style="background: var(--bluel, #dbeafe); color: var(--blue, #1d4ed8)">✓ WCAG Accessibility Required</span>
-            </div>
-
-            <!-- Affected Products -->
-            <div v-if="req.affectedProducts?.length" class="mb-4">
-              <h6 class="mb-2">Affected Products</h6>
-              <div class="d-flex flex-wrap gap-2">
-                <span v-for="p in req.affectedProducts" :key="p" class="badge bg-secondary">{{ p }}</span>
+              <!-- Use Case -->
+              <div v-if="req.useCase || req.whatWeHelp" class="mb-4">
+                <h6 class="mb-2">Use Case / Requirement</h6>
+                <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.useCase || req.whatWeHelp }}</p>
               </div>
-            </div>
 
-            <!-- Reference Product -->
-            <div v-if="req.referenceProduct" class="mb-4">
-              <h6 class="mb-2">Reference Product</h6>
-              <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.referenceProduct }}</p>
-            </div>
+              <!-- Links & Resources -->
+              <div v-if="req.designReferenceLink || req.productionLink" class="mb-4">
+                <h6 class="mb-2">Links & Resources</h6>
+                <div class="d-flex flex-wrap gap-2">
+                  <a v-if="req.designReferenceLink" :href="req.designReferenceLink" target="_blank" class="btn btn-sm btn-outline-secondary">🎨 Design Reference ↗</a>
+                  <a v-if="req.productionLink" :href="req.productionLink" target="_blank" class="btn btn-sm btn-outline-secondary">🔗 Production Link ↗</a>
+                </div>
+              </div>
 
-            <!-- Interaction Behaviour -->
-            <div v-if="req.interactionBehaviour" class="mb-4">
-              <h6 class="mb-2">Interaction Behaviour</h6>
-              <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.interactionBehaviour }}</p>
-            </div>
+              <!-- Attributes -->
+              <div class="row g-3">
+                <div v-if="req.stateRequirements?.length" class="col-12 mb-4">
+                  <h6 class="mb-2">State Requirements</h6>
+                  <div class="d-flex flex-wrap gap-2">
+                    <span v-for="s in req.stateRequirements" :key="s" class="badge bg-secondary">{{ s }}</span>
+                  </div>
+                </div>
 
-            <!-- Deadline -->
-            <div v-if="req.deadline" class="mb-4">
-              <h6 class="mb-2">Deadline</h6>
-              <span style="font-size: 13px; color: var(--s700); font-weight: 600">{{ req.deadline }}</span>
-            </div>
+                <div v-if="req.responsiveBehaviour" class="col-12 col-sm-6 mb-4">
+                  <h6 class="mb-2">Responsive Behaviour</h6>
+                  <span class="badge bg-secondary">{{ req.responsiveBehaviour }}</span>
+                </div>
 
-            <!-- Additional Notes -->
-            <div v-if="req.additionalNotes" class="mb-4">
-              <h6 class="mb-2">Additional Notes</h6>
-              <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.additionalNotes }}</p>
+                <div v-if="req.accessibilityRequirement" class="col-12 col-sm-6 mb-4">
+                  <h6 class="mb-2">Accessibility</h6>
+                  <span class="badge" style="background: var(--bluel, #dbeafe); color: var(--blue, #1d4ed8)">✓ WCAG Required</span>
+                </div>
+              </div>
+
+              <!-- Metadata Loop for Dynamic Fields -->
+              <div v-if="req.metadata && Object.keys(req.metadata).length > 0" class="mb-4">
+                <h6 class="mb-3">Additional Details</h6>
+                <div class="row g-3">
+                  <div v-for="(val, key) in req.metadata" :key="key" class="col-12 col-sm-6">
+                    <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">{{ key.replace(/([A-Z])/g, ' $1') }}</div>
+                    <div style="font-size: 13px">{{ val }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div v-if="req.notes || req.additionalNotes" class="mb-4">
+                <h6 class="mb-2">Notes</h6>
+                <p style="font-size: 13px; color: var(--s700); line-height: 1.6">{{ req.notes || req.additionalNotes }}</p>
+              </div>
             </div>
 
             <!-- Request Done section -->
@@ -168,8 +168,8 @@
                 <h6 class="mb-0 text-success">Request Done</h6>
               </div>
               <div class="row g-2">
-                <div class="col-12 col-sm-6">
-                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Nama Komponen</div>
+                <div v-if="req.componentName || publishLog?.componentName" class="col-12 col-sm-6">
+                  <div style="font-size: 11px; color: var(--s500); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px">Published Name</div>
                   <div class="fw-bold">{{ publishLog?.componentName || req.componentName }}</div>
                 </div>
                 <div v-if="publishLog?.library" class="col-12 col-sm-6">
@@ -181,8 +181,9 @@
                   <div class="fw-bold">v{{ publishLog.version }}</div>
                 </div>
               </div>
-              <div v-if="publishLog?.docLink" class="mt-3">
-                <a :href="publishLog.docLink" target="_blank" class="btn btn-sm btn-outline-secondary">📄 Lihat Dokumentasi ↗</a>
+              <div v-if="publishLog?.docLink || req.productionLink" class="mt-3 d-flex gap-2">
+                <a v-if="publishLog?.docLink" :href="publishLog.docLink" target="_blank" class="btn btn-sm btn-outline-secondary">📄 Documentation ↗</a>
+                <a v-if="req.productionLink" :href="req.productionLink" target="_blank" class="btn btn-sm btn-outline-secondary">🔗 Production Link ↗</a>
               </div>
             </div>
           </div>
@@ -216,7 +217,7 @@
                     <a v-if="log.figmaLink" :href="log.figmaLink" target="_blank" class="btn btn-sm btn-outline-secondary">🎨 Figma ↗</a>
                     <a v-if="log.previewLink" :href="log.previewLink" target="_blank" class="btn btn-sm btn-outline-secondary">🔗 Preview ↗</a>
                     <button v-if="log.screenshotName" class="btn btn-sm btn-outline-secondary" @click="previewImg = log.screenshotDataUrl">🖼 {{ log.screenshotName }}</button>
-                    <a v-if="log.docLink" :href="log.docLink" target="_blank" class="btn btn-sm btn-outline-secondary">📄 Dokumentasi ↗</a>
+                    <a v-if="log.docLink" :href="log.docLink" target="_blank" class="btn btn-sm btn-outline-secondary">📄 Documentation ↗</a>
                     <span v-if="log.score != null" style="font-size: 12px; color: var(--s500)">📊 Score: {{ log.score }}/10</span>
                     <span v-if="log.version" style="font-size: 12px; color: var(--s500)">🏷 v{{ log.version }}</span>
                   </div>
@@ -281,6 +282,16 @@
             </div>
           </div>
         </div>
+
+        <!-- Deadline -->
+        <div v-if="req.deadline" class="card mt-4">
+          <div class="card-header">
+            <h5 class="mb-0">📅 Deadline</h5>
+          </div>
+          <div class="card-body">
+            <div class="fw-bold text-danger">{{ req.deadline }}</div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -329,54 +340,130 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useRequestsStore } from '@/stores/requests'
+import { useResearchStore } from '@/stores/research'
 import { useUiStore } from '@/stores/menu'
 import { formatDate } from '@/composables/useFormat'
 import ActionModal from '@/components/requests/ActionModal.vue'
-import { Modal, EmptyState, Dropdown } from '@/components/ui'
+import { Modal, EmptyState, Dropdown, PipelineVisualization } from '@/components/ui'
 
 const route    = useRoute()
 const auth     = useAuthStore()
 const reqStore = useRequestsStore()
+const researchStore = useResearchStore()
 const ui       = useUiStore()
 
-const req           = computed(() => reqStore.items.find(r => r.id === route.params.id))
+// Get request from either component or research store
+const req = computed(() => {
+  let found = reqStore.items.find(r => r.id === route.params.id)
+  if (!found) {
+    found = researchStore.items?.find(r => r.id === route.params.id)
+    if (found) found._type = 'research'
+  } else {
+    found._type = 'component'
+  }
+  return found
+})
 const showOverride  = ref(false)
 const overrideForm  = ref({ status:'', note:'' })
 const actionState   = ref({ show:false })
 const previewImg    = ref(null)
 
-const wfSteps = computed(() => req.value ? reqStore.getWorkflowSteps(req.value.workflow) : [])
-const wfLabel = computed(() => req.value?.workflow === 'designer' ? 'Designer Request' : req.value?.workflow === 'audit' ? 'Audit Workflow' : 'Developer Request')
-const availableActions = computed(() => req.value ? reqStore.getAvailableActions(req.value, auth.role, auth.user?.name, auth.user?.id) : [])
+// Helper function to get status label for both request types
+function getStatusLabel(r) {
+  if (!r) return ''
+  if (r._type === 'research') return researchStore.statusLabel(r.status)
+  return reqStore.statusLabel(r.status)
+}
 
-const chain = computed(() => req.value ? reqStore.getOwnershipChain(req.value) : {})
+const wfSteps = computed(() => {
+  if (req.value?._type === 'component') return reqStore.getWorkflowSteps(req.value)
+  if (req.value?._type === 'research') return researchStore.getWorkflowSteps(req.value)
+  return []
+})
+
+const wfLabel = computed(() => {
+  if (req.value?._type === 'research') return 'Research Project'
+  return req.value?.workflow === 'designer' ? 'Role Request' : req.value?.workflow === 'audit' ? 'Audit Workflow' : 'Developer Request'
+})
+
+const availableActions = computed(() => {
+  if (req.value?._type === 'component') {
+    return reqStore.getAvailableActions(req.value, auth.role, auth.user?.name, auth.user?.id)
+  }
+  if (req.value?._type === 'research') {
+    return researchStore.getAvailableActions(req.value.status, auth.role, req.value)
+  }
+  return []
+})
+
+const chain = computed(() => req.value?._type === 'component' ? reqStore.getOwnershipChain(req.value) : {})
 const publishLog = computed(() => req.value?.logs?.find(l => l.action === 'publish') || null)
 const ownershipList = computed(() => {
   const r = req.value
   if (!r) return []
   const c = chain.value
-  const team = reqStore.getRequesterTeam(r)
+  const team = reqStore.getRequesterName(r) ? reqStore.getRequesterTeam(r) : null
   const list = [
-    { label: 'Requester', icon: '📝', name: c.requester, badgeClass: 'b-' + r.requesterRole, badgeText: r.requesterRole, sub: team },
-    { label: 'Designer',  icon: '🎨', name: c.designer,  badgeClass: 'b-designer',            badgeText: 'designer',       sub: null },
-    { label: 'Engineer',  icon: '⚙️', name: c.engineer,  badgeClass: 'b-engineer',            badgeText: 'engineer',       sub: null },
-    { label: 'Reviewer',  icon: '👁️', name: c.reviewer,  badgeClass: 'b-designer',            badgeText: 'reviewer',       sub: null },
+    { label: 'Requester', icon: '📝', name: reqStore.getRequesterName(r), badgeClass: 'b-' + r.requesterRole, badgeText: r.requesterRole, sub: team },
+    { label: 'Designer',  icon: '🎨', name: reqStore.getDesignerOwner(r),  badgeClass: 'b-designer',            badgeText: 'designer',       sub: null },
+    { label: 'Engineer',  icon: '⚙️', name: reqStore.getEngineerOwner(r),  badgeClass: 'b-engineer',            badgeText: 'engineer',       sub: null },
   ]
-  if (r.workflow === 'audit' || c.auditor)
-    list.push({ label: 'Auditor', icon: '🔍', name: c.auditor, badgeClass: 'b-designer', badgeText: 'auditor', sub: null })
-  if (c.publisher)
-    list.push({ label: 'Publisher', icon: '🚀', name: c.publisher, badgeClass: 'b-engineer', badgeText: 'engineer', sub: null })
   return list
 })
 
 // Dropdown options for override status
-const overrideStatusOptions = computed(() =>
-  reqStore.ALL_STATUSES.map(s => ({ value: s.key, label: s.label }))
-)
+const overrideStatusOptions = computed(() => {
+  const r = req.value
+  if (!r) return []
+
+  if (r._type === 'research') {
+    return researchStore.getWorkflowSteps(r).map(step => ({
+      value: step.status,
+      label: step.label,
+    }))
+  }
+
+  const steps = reqStore.getWorkflowSteps(r)
+  const options = [
+    ...steps.map(step => ({ value: step.status, label: step.label })),
+  ]
+
+  const seen = new Set()
+  return options.filter(opt => {
+    if (!opt.value || seen.has(opt.value)) return false
+    seen.add(opt.value)
+    return true
+  })
+})
 
 function openAction(act) {
   const startLog = act.autoName ? (req.value.logs||[]).find(l => l.action==='start_design'||l.action==='start_redesign') : null
   actionState.value = { show:true, req: req.value, act, actorName: startLog?.actor || '' }
+}
+
+function pipeClass(stepStatus, currentStatus) {
+  if (req.value?._type === 'research') {
+    return researchStore.pipeClass(stepStatus, currentStatus, req.value)
+  }
+  return reqStore.pipeClass(stepStatus, currentStatus, req.value)
+}
+
+function triggerAction(act) {
+  if (req.value?._type === 'research') {
+    handleResearchAction(act)
+    return
+  }
+  openAction(act)
+}
+
+async function handleResearchAction(act) {
+  try {
+    const note = `${act.label} by ${auth.user?.name || 'system'}`
+    await researchStore.updateStatus(req.value.id, act.nextStatus, note)
+    ui.showToast(`${act.label} completed!`)
+  } catch (e) {
+    ui.showToast(e.message, 'err')
+  }
 }
 
 async function handleAction(payload) {
@@ -396,3 +483,12 @@ async function doOverride() {
   } catch (e) { ui.showToast(e.message, 'err') }
 }
 </script>
+
+<style scoped>
+.b-backlog { background: #f3f4f6; color: #374151; }
+.b-in_design { background: #e0e7ff; color: #4338ca; }
+.b-design_done { background: #dcfce7; color: #15803d; }
+.b-in_progress_code { background: #fef9c3; color: #854d0e; }
+.b-done { background: #22c55e; color: white; }
+/* ... other status colors ... */
+</style>

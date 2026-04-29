@@ -182,10 +182,10 @@
               <div class="fw-bold" style="font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{ req.title }}</div>
               <!-- Segmented workflow progress bar -->
               <div class="d-flex gap-1 align-items-center mt-2">
-                <div v-for="(step, i) in reqStore.getWorkflowSteps(req.workflow)" :key="i"
+                <div v-for="(step, i) in reqStore.getWorkflowSteps(req)" :key="i"
                   class="flex-grow-1"
                   style="height: 3px; border-radius: 2px"
-                  :style="{ background: reqStore.pipeClass(step.status, req.status) === 'done' ? 'var(--g)' : reqStore.pipeClass(step.status, req.status) === 'active' ? 'var(--gold)' : 'var(--s200)' }">
+                  :style="{ background: reqStore.pipeClass(step.status, req.status, req) === 'done' ? 'var(--g)' : reqStore.pipeClass(step.status, req.status, req) === 'active' ? 'var(--gold)' : 'var(--s200)' }">
                 </div>
               </div>
             </div>
@@ -287,9 +287,9 @@
             <div style="font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ req.title }}</div>
             <!-- Segmented workflow progress bar -->
             <div style="display:flex;gap:3px;align-items:center;margin-top:5px">
-              <div v-for="(step, i) in reqStore.getWorkflowSteps(req.workflow)" :key="i"
+              <div v-for="(step, i) in reqStore.getWorkflowSteps(req)" :key="i"
                 style="height:3px;flex:1;border-radius:2px"
-                :style="{ background: reqStore.pipeClass(step.status, req.status) === 'done' ? 'var(--g)' : reqStore.pipeClass(step.status, req.status) === 'active' ? 'var(--gold)' : 'var(--s200)' }">
+                :style="{ background: reqStore.pipeClass(step.status, req.status, req) === 'done' ? 'var(--g)' : reqStore.pipeClass(step.status, req.status, req) === 'active' ? 'var(--gold)' : 'var(--s200)' }">
               </div>
             </div>
           </div>
@@ -467,21 +467,16 @@ const flowItems = computed(() => {
   const role = auth.role
   const name = auth.user?.name
   const uid  = auth.user?.id
-  const active = reqStore.items.filter(r => r.status !== 'done')
 
-  const ACTIVE_DESIGNER = ['in_design','on_review_designer','on_audit','in_redesign']
-  const ACTIVE_ENGINEER = ['in_progress_code','need_revision','done_review','need_publish']
+  if (role === 'developer') {
+    return reqStore.items.filter(r => r.status !== 'done' && r.requesterRole === 'developer')
+  }
 
-  if (role === 'developer') return active.filter(r => r.requesterRole === 'developer')
-  if (role === 'designer') return active.filter(r => {
-    if (ACTIVE_DESIGNER.includes(r.status)) return reqStore.isDesignerOwner(r, uid, name)
-    return false
-  })
-  if (role === 'engineer') return active.filter(r => {
-    if (ACTIVE_ENGINEER.includes(r.status)) return reqStore.isEngineerOwner(r, uid, name)
-    return false
-  })
-  return active
+  if (role === 'designer' || role === 'engineer' || role === 'super_admin') {
+    return reqStore.myTasks(role, name, uid)
+  }
+
+  return reqStore.items.filter(r => r.status !== 'done')
 })
 
 const sortedFlowItems = computed(() => {

@@ -1,13 +1,16 @@
 // src/routes/activity.js
 const router = require('express').Router();
-const { getDb } = require('../data/db');
 const { authenticate } = require('../middleware/auth');
+const activityController = require('../controllers/activityController');
 
 router.use(authenticate);
 
-router.get('/', (req, res) => {
-  const rows = getDb().prepare('SELECT * FROM activity_log ORDER BY created_at DESC LIMIT 100').all();
-  res.json(rows.map(r => ({ ...r, at: r.created_at })));
-});
+/**
+ * GET /api/activity
+ * Get recent activity logs (limited to 100 latest)
+ * Auth: Required
+ * Returns: array of activity log entries
+ */
+router.get('/', activityController.getActivityLog);
 
 module.exports = router;

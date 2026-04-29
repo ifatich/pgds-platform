@@ -3,59 +3,209 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { api } from '@/composables/useApi'
 import { useAuthStore } from './auth'
+import { useDataMasterStore } from './dataMaster'
 
 export const useRequestsStore = defineStore('requests', () => {
   const items    = ref([])
   const loading  = ref(false)
+  const dmStore  = useDataMasterStore()
 
-  // Workflow definitions
-  const WF_DEVELOPER = [
-    { label:'Backlog', status:'backlog' }, { label:'In Design', status:'in_design' },
-    { label:'Design Done', status:'design_done' }, { label:'In Progress', status:'in_progress_code' },
-    { label:'Need Review', status:'need_review_designer' }, { label:'On Review', status:'on_review_designer' },
-    { label:'Done Review', status:'done_review' }, { label:'Need Publish', status:'need_publish' }, { label:'Done', status:'done' },
-  ]
-  const WF_DESIGNER = [
-    { label:'Need Validation', status:'need_design_validation' }, { label:'Backlog', status:'backlog' },
-    { label:'In Design', status:'in_design' }, { label:'Design Done', status:'design_done' },
-    { label:'In Progress', status:'in_progress_code' }, { label:'Need Review', status:'need_review_designer' },
-    { label:'On Review', status:'on_review_designer' }, { label:'Done Review', status:'done_review' },
-    { label:'Need Publish', status:'need_publish' }, { label:'Done', status:'done' },
-  ]
-  const WF_AUDIT = [
-    { label:'Need Audit', status:'need_audit' }, { label:'On Audit', status:'on_audit' },
-    { label:'Need Redesign', status:'need_redesign' }, { label:'In Redesign', status:'in_redesign' },
-    { label:'Redesign Done', status:'redesign_done' }, { label:'In Progress', status:'in_progress_code' },
-    { label:'Need Review', status:'need_review_designer' }, { label:'On Review', status:'on_review_designer' },
-    { label:'Done Review', status:'done_review' }, { label:'Need Publish', status:'need_publish' }, { label:'Done', status:'done' },
-  ]
-
-  const ALL_STATUSES = [
-    { key:'backlog', label:'Backlog' }, { key:'need_design_validation', label:'Need Validation' },
-    { key:'in_design', label:'In Design' }, { key:'design_done', label:'Design Done' },
-    { key:'in_progress_code', label:'In Progress Code' }, { key:'need_review_designer', label:'Need Review' },
-    { key:'on_review_designer', label:'On Review' }, { key:'need_revision', label:'Need Revision' },
-    { key:'done_review', label:'Done Review' }, { key:'need_publish', label:'Need Publish' },
-    { key:'done', label:'Done' }, { key:'need_audit', label:'Need Audit' },
-    { key:'on_audit', label:'On Audit' }, { key:'need_redesign', label:'Need Redesign' },
-    { key:'in_redesign', label:'In Redesign' }, { key:'redesign_done', label:'Redesign Done' },
-    { key:'need_development_update', label:'Need Dev Update' },
-  ]
-
-  function getWorkflowSteps(wf) {
-    return wf === 'designer' ? WF_DESIGNER : wf === 'audit' ? WF_AUDIT : WF_DEVELOPER
+  const FALLBACK_PIPELINES = {
+    engineer: ['backlog', 'in_design', 'design_done', 'in_progress_code', 'need_review_designer', 'on_review_designer', 'done_review', 'need_publish', 'done'],
+    designer: ['backlog', 'in_design', 'need_review_designer', 'on_review_designer', 'done_review', 'design_finish'],
+    illustrator: ['backlog', 'in_design', 'need_review_designer', 'on_review_designer', 'done_review', 'design_finish'],
+    researcher: ['backlog', 'in_progress_research', 'need_review_designer', 'on_review_designer', 'done_review', 'research_finish'],
   }
 
-  function pipeClass(stepStatus, currentStatus) {
-    const steps = ALL_STATUSES.map(s => s.key)
-    const ci = steps.indexOf(currentStatus)
-    const si = steps.indexOf(stepStatus)
-    if (stepStatus === currentStatus) return 'active'
-    if (si < ci) return 'done'
+  const AUDIT_PIPELINE = ['need_audit', 'on_audit', 'need_redesign', 'in_redesign', 'redesign_done', 'in_progress_code', 'need_review_designer', 'on_review_designer', 'done_review', 'need_publish', 'done']
+
+  const DEFAULT_STATUS_ORDER = [
+    'need_design_validation',
+    ...AUDIT_PIPELINE,
+    ...FALLBACK_PIPELINES.engineer,
+    ...FALLBACK_PIPELINES.designer,
+    ...FALLBACK_PIPELINES.illustrator,
+    ...FALLBACK_PIPELINES.researcher,
+    'need_development_update',
+    'need_revision',
+  ]
+
+  function titleizeStatus(status) {
+    return String(status || '')
+      .replace(/_/g, ' ')
+      .replace(/\b\w/g, c => c.toUpperCase())
+  }
+
+  function normalizeStatus(status) {
+    return String(status || '')
+      .toLowerCase()
+      .trim()
+      .replace(/[\s-]+/g, '_')
+      .replace(/_+/g, '_')
+  }
+
+  function getRequestTypeCategory(requestType) {
+    const types = dmStore.settings.requestTypes || []
+    return types.find(t => t.value === requestType)?.category || null
+  }
+
+  function getConfiguredPipelines() {
+    return {
+      ...FALLBACK_PIPELINES,
+      ...(dmStore.settings.requestPipelines || {}),
+    }
+  }
+
+  // Get pipeline stages for a specific request type from requestPipelinesByType
+  function getPipelineByRequestType(requestType) {
+    const byType = dmStore.settings.requestPipelinesByType || {}
+    if (byType[requestType] && Array.isArray(byType[requestType])) {
+      return byType[requestType].map(stage => {
+        if (typeof stage === 'string') {
+          const normalized = normalizeStatus(stage)
+          return { status: normalized, label: titleizeStatus(normalized), onFailStatus: '' }
+        }
+        const normalizedStatus = normalizeStatus(stage.status)
+        return {
+          ...stage,
+          status: normalizedStatus,
+          label: stage.label || titleizeStatus(normalizedStatus),
+          onFailStatus: normalizeStatus(stage.onFailStatus),
+        }
+      })
+    }
+    return null
+  }
+
+  function resolvePipelineStatuses(reqOrWorkflow) {
+    // If it's a request object with requestType, try to use per-type pipeline first
+    if (reqOrWorkflow && typeof reqOrWorkflow === 'object' && reqOrWorkflow.requestType) {
+      if (reqOrWorkflow.workflow === 'audit') return AUDIT_PIPELINE
+      
+      // Try per-request-type pipeline first (from requestPipelinesByType)
+      const typeSpecificPipeline = getPipelineByRequestType(reqOrWorkflow.requestType)
+      if (typeSpecificPipeline) {
+        return typeSpecificPipeline.map(s => normalizeStatus(s.status))
+      }
+      
+      // Fallback to category-based pipeline (legacy)
+      const category = getRequestTypeCategory(reqOrWorkflow.requestType)
+      const configured = getConfiguredPipelines()
+      if (category && Array.isArray(configured[category]) && configured[category].length > 0) {
+        return configured[category].map(normalizeStatus)
+      }
+      return (reqOrWorkflow.workflow === 'designer' ? configured.designer : configured.engineer).map(normalizeStatus)
+    }
+
+    if (reqOrWorkflow === 'audit') return AUDIT_PIPELINE.map(normalizeStatus)
+    const configured = getConfiguredPipelines()
+    return (reqOrWorkflow === 'designer' ? configured.designer : configured.engineer).map(normalizeStatus)
+  }
+
+  const ALL_STATUSES = computed(() => {
+    const configured = getConfiguredPipelines()
+    const dynamicStatuses = Object.values(configured).flat()
+    const unique = [...new Set([...DEFAULT_STATUS_ORDER, ...dynamicStatuses])]
+    return unique.map(key => ({ key, label: titleizeStatus(key) }))
+  })
+
+  function getWorkflowSteps(reqOrWorkflow) {
+    if (reqOrWorkflow && typeof reqOrWorkflow === 'object' && reqOrWorkflow.requestType) {
+      const typeSpecificPipeline = getPipelineByRequestType(reqOrWorkflow.requestType)
+      if (Array.isArray(typeSpecificPipeline) && typeSpecificPipeline.length > 0) {
+        return typeSpecificPipeline.map(stage => ({
+          status: normalizeStatus(stage.status),
+          label: stage.label || titleizeStatus(stage.status),
+          onFailStatus: normalizeStatus(stage.onFailStatus),
+        }))
+      }
+    }
+
+    return resolvePipelineStatuses(reqOrWorkflow).map(status => ({
+      status: normalizeStatus(status),
+      label: titleizeStatus(normalizeStatus(status)),
+      onFailStatus: '',
+    }))
+  }
+
+  function resolveEffectiveCurrentStatus(currentStatus, reqOrWorkflow, steps) {
+    const normalizedCurrentStatus = normalizeStatus(currentStatus)
+    const normalizedSteps = steps.map(normalizeStatus)
+
+    // Handle equivalent status aliases commonly found in legacy/custom data.
+    const aliases = {
+      published: 'done',
+      completed: 'done',
+    }
+    const reverseAliases = {
+      done: 'published',
+    }
+
+    if (normalizedSteps.includes(normalizedCurrentStatus)) {
+      return normalizedCurrentStatus
+    }
+
+    const aliasMapped = normalizeStatus(aliases[normalizedCurrentStatus])
+    if (aliasMapped && normalizedSteps.includes(aliasMapped)) {
+      return aliasMapped
+    }
+
+    const reverseAliasMapped = normalizeStatus(reverseAliases[normalizedCurrentStatus])
+    if (reverseAliasMapped && normalizedSteps.includes(reverseAliasMapped)) {
+      return reverseAliasMapped
+    }
+
+    // If current status is a fallback target (onFailStatus), highlight its source step.
+    if (reqOrWorkflow && typeof reqOrWorkflow === 'object' && reqOrWorkflow.requestType) {
+      const typedPipeline = getPipelineByRequestType(reqOrWorkflow.requestType)
+      if (Array.isArray(typedPipeline) && typedPipeline.length > 0) {
+        const sourceStage = typedPipeline.find(
+          stage => normalizeStatus(stage.onFailStatus) === normalizedCurrentStatus
+        )
+        const sourceStatus = normalizeStatus(sourceStage?.status)
+        if (sourceStatus && normalizedSteps.includes(sourceStatus)) {
+          return sourceStatus
+        }
+      }
+    }
+
+    // Legacy fallback mapping for statuses outside the visual pipeline.
+    const fallbackToSource = {
+      on_review_designer: 'need_review_designer',
+      need_revision: 'in_progress_code',
+      need_development_update: 'in_progress_code',
+      need_redesign: 'in_redesign',
+    }
+    const mapped = normalizeStatus(fallbackToSource[normalizedCurrentStatus])
+    if (mapped && normalizedSteps.includes(mapped)) {
+      return mapped
+    }
+
+    return normalizedCurrentStatus
+  }
+
+  function pipeClass(stepStatus, currentStatus, reqOrWorkflow = null) {
+    const normalizedCurrentStatus = normalizeStatus(currentStatus)
+    const normalizedStepStatus = normalizeStatus(stepStatus)
+    const steps = reqOrWorkflow ? resolvePipelineStatuses(reqOrWorkflow) : ALL_STATUSES.value.map(s => s.key)
+    const normalizedSteps = steps.map(normalizeStatus)
+    const effectiveCurrentStatus = resolveEffectiveCurrentStatus(currentStatus, reqOrWorkflow, steps)
+    const ci = normalizedSteps.indexOf(effectiveCurrentStatus)
+    const si = normalizedSteps.indexOf(normalizedStepStatus)
+
+    const recoveryStatuses = new Set(['need_revision', 'need_development_update', 'need_redesign'])
+    const isRecoveryHighlight =
+      normalizedStepStatus === effectiveCurrentStatus &&
+      recoveryStatuses.has(normalizedCurrentStatus) &&
+      effectiveCurrentStatus !== normalizedCurrentStatus
+
+    if (isRecoveryHighlight) return 'recovery'
+    if (normalizedStepStatus === effectiveCurrentStatus) return 'active'
+    if (si >= 0 && ci >= 0 && si < ci) return 'done'
     return 'pending'
   }
 
-  function statusLabel(s) { return ALL_STATUSES.find(x => x.key === s)?.label || s }
+  function statusLabel(s) { return ALL_STATUSES.value.find(x => x.key === s)?.label || titleizeStatus(s) }
 
   // ── Ownership helpers ──────────────────────────────────────────────────────
   // Prefer ID match (reliable), fallback to name (for pre-migration data)
@@ -139,6 +289,67 @@ export const useRequestsStore = defineStore('requests', () => {
     }
   }
 
+  const FALLBACK_ACTION_TRANSITIONS = {
+    approve_validation: { from: ['need_design_validation'], next: 'backlog', roles: ['designer', 'super_admin'] },
+    start_design: { from: ['backlog'], next: 'in_design', roles: ['designer', 'super_admin'] },
+    finish_design: { from: ['in_design'], next: 'design_done', roles: ['designer', 'super_admin'] },
+    start_review: { from: ['need_review_designer'], next: 'on_review_designer', roles: ['designer', 'super_admin'] },
+    approve_review: { from: ['on_review_designer'], next: 'done_review', roles: ['designer', 'super_admin'] },
+    request_revision: { from: ['on_review_designer'], next: 'need_revision', roles: ['designer', 'super_admin'] },
+    start_audit: { from: ['need_audit'], next: 'on_audit', roles: ['designer', 'super_admin'] },
+    require_redesign: { from: ['on_audit'], next: 'need_redesign', roles: ['designer', 'super_admin'] },
+    audit_pass: { from: ['on_audit'], next: 'need_development_update', roles: ['designer', 'super_admin'] },
+    start_redesign: { from: ['need_redesign'], next: 'in_redesign', roles: ['designer', 'super_admin'] },
+    finish_redesign: { from: ['in_redesign'], next: 'redesign_done', roles: ['designer', 'super_admin'] },
+    start_dev: { from: ['design_done', 'redesign_done', 'need_development_update'], next: 'in_progress_code', roles: ['engineer', 'super_admin'] },
+    finish_dev: { from: ['in_progress_code'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+    submit_revision: { from: ['need_revision'], next: 'need_review_designer', roles: ['engineer', 'super_admin'] },
+    publish: { from: ['done_review', 'need_publish'], next: 'done', roles: ['engineer', 'super_admin'] },
+  }
+
+  const DEFAULT_ACTION_UI = {
+    approve_validation: { label:'Approve Validation', icon:'✓', primary:true, needsName:true, title:'Approve Design Validation' },
+    start_design: { label:'Start Design', icon:'🎨', primary:true, needsName:true, title:'Start Design' },
+    finish_design: { label:'Mark Design Done', icon:'✅', primary:true, needsName:true, autoName:true, notesLabel:'Design Completion Notes', notesPlaceholder:'Describe what was completed...', needsFigma:true, needsScreenshot:true, title:'Mark Design Done' },
+    start_review: { label:'Start Review', icon:'👁', primary:true, needsName:true, title:'Start Designer Review' },
+    approve_review: { label:'Approve', icon:'✓', primary:true, needsName:true, title:'Approve Implementation' },
+    request_revision: { label:'Request Revision', icon:'↻', danger:true, needsName:true, notesRequired:true, notesLabel:'Revision Notes', notesPlaceholder:'Describe what needs revision...', needsScreenshot:true, title:'Request Revision' },
+    start_audit: { label:'Start Audit', icon:'🔍', primary:true, needsName:true, title:'Start Audit' },
+    require_redesign: { label:'Require Redesign', icon:'⚠️', danger:true, needsName:true, notesRequired:true, title:'Require Redesign' },
+    audit_pass: { label:'Audit Passed', icon:'✓', primary:true, needsName:true, title:'Pass Audit' },
+    start_redesign: { label:'Start Redesign', icon:'🎨', primary:true, needsName:true, title:'Start Redesign' },
+    finish_redesign: { label:'Finish Redesign', icon:'✅', primary:true, needsName:true, needsFigma:true, needsScreenshot:true, title:'Finish Redesign' },
+    start_dev: { label:'Start Development', icon:'⚙️', primary:true, needsName:true, title:'Start Development' },
+    finish_dev: { label:'Submit for Review', icon:'📤', primary:true, needsName:true, needsScore:true, notesRequired:true, notesLabel:'Development Notes', notesPlaceholder:'Describe what was built...', needsPreviewLink:true, needsScreenshot:true, title:'Submit Development' },
+    submit_revision: { label:'Submit Revision', icon:'📤', primary:true, needsName:true, notesRequired:true, notesLabel:'Revision Notes', notesPlaceholder:'What was changed...', needsPreviewLink:true, needsScreenshot:true, title:'Submit Revision' },
+    publish: { label:'Publish Component', icon:'🚀', primary:true, needsName:true, needsComponentName:true, needsVersion:true, needsLibrary:true, needsDocLink:true, title:'Publish Component' },
+  }
+
+  function getActionTransition(action) {
+    const configured = dmStore.settings.requestActions?.transitions || {}
+    return configured[action] || FALLBACK_ACTION_TRANSITIONS[action] || null
+  }
+
+  function canExecuteAction(action, status, role) {
+    const transition = getActionTransition(action)
+    if (!transition) return false
+    if (Array.isArray(transition.roles) && transition.roles.length > 0 && !transition.roles.includes(role)) return false
+    if (Array.isArray(transition.from) && transition.from.length > 0 && !transition.from.includes(status)) return false
+    return true
+  }
+
+  function makeActionDescriptor(action, overrides = {}) {
+    const configuredUi = dmStore.settings.requestActions?.ui?.[action] || {}
+    const transition = getActionTransition(action)
+    return {
+      action,
+      ...(DEFAULT_ACTION_UI[action] || {}),
+      ...configuredUi,
+      ...(transition?.next ? { nextStatus: transition.next } : {}),
+      ...overrides,
+    }
+  }
+
   // userId = auth.user?.id (preferred), userName = auth.user?.name (fallback for old data)
   function getAvailableActions(req, role, userName = null, userId = null) {
     const s = req.status
@@ -147,30 +358,26 @@ export const useRequestsStore = defineStore('requests', () => {
       const hasOwner = !!getDesignerOwner(req)
       const isOwner  = role === 'super_admin' || !hasOwner || isDesignerOwner(req, userId, userName)
 
-      if (s === 'need_design_validation') acts.push({ action:'approve_validation', label:'Approve Validation', icon:'✓', primary:true, nextStatus:'backlog', needsName:true, title:'Approve Design Validation' })
-      if (s === 'backlog') acts.push({ action:'start_design', label:'Start Design', icon:'🎨', primary:true, nextStatus:'in_design', needsName:true, title:'Start Design' })
-      if (s === 'in_design' && isOwner) acts.push({ action:'finish_design', label:'Mark Design Done', icon:'✅', primary:true, nextStatus:'design_done', needsName:true, autoName:true, notesLabel:'Design Completion Notes', notesPlaceholder:'Describe what was completed...', needsFigma:true, needsScreenshot:true, title:'Mark Design Done' })
-      if (s === 'need_review_designer') acts.push({ action:'start_review', label:'Start Review', icon:'👁', primary:true, nextStatus:'on_review_designer', needsName:true, title:'Start Designer Review' })
-      if (s === 'on_review_designer' && isOwner) {
-        acts.push({ action:'approve_review', label:'Approve', icon:'✓', primary:true, nextStatus:'done_review', needsName:true, title:'Approve Implementation' })
-        acts.push({ action:'request_revision', label:'Request Revision', icon:'↻', danger:true, nextStatus:'need_revision', needsName:true, notesRequired:true, notesLabel:'Revision Notes', notesPlaceholder:'Describe what needs revision...', needsScreenshot:true, title:'Request Revision' })
-      }
-      if (s === 'need_audit') acts.push({ action:'start_audit', label:'Start Audit', icon:'🔍', primary:true, nextStatus:'on_audit', needsName:true, title:'Start Audit' })
-      if (s === 'on_audit' && isOwner) {
-        acts.push({ action:'require_redesign', label:'Require Redesign', icon:'⚠️', danger:true, nextStatus:'need_redesign', needsName:true, notesRequired:true, title:'Require Redesign' })
-        acts.push({ action:'audit_pass', label:'Audit Passed', icon:'✓', primary:true, nextStatus:'need_development_update', needsName:true, title:'Pass Audit' })
-      }
-      if (s === 'need_redesign') acts.push({ action:'start_redesign', label:'Start Redesign', icon:'🎨', primary:true, nextStatus:'in_redesign', needsName:true, title:'Start Redesign' })
-      if (s === 'in_redesign' && isOwner) acts.push({ action:'finish_redesign', label:'Finish Redesign', icon:'✅', primary:true, nextStatus:'redesign_done', needsName:true, needsFigma:true, needsScreenshot:true, title:'Finish Redesign' })
+      if (canExecuteAction('approve_validation', s, role)) acts.push(makeActionDescriptor('approve_validation'))
+      if (canExecuteAction('start_design', s, role)) acts.push(makeActionDescriptor('start_design'))
+      if (canExecuteAction('finish_design', s, role) && isOwner) acts.push(makeActionDescriptor('finish_design'))
+      if (canExecuteAction('start_review', s, role)) acts.push(makeActionDescriptor('start_review'))
+      if (canExecuteAction('approve_review', s, role) && isOwner) acts.push(makeActionDescriptor('approve_review'))
+      if (canExecuteAction('request_revision', s, role) && isOwner) acts.push(makeActionDescriptor('request_revision'))
+      if (canExecuteAction('start_audit', s, role)) acts.push(makeActionDescriptor('start_audit'))
+      if (canExecuteAction('require_redesign', s, role) && isOwner) acts.push(makeActionDescriptor('require_redesign'))
+      if (canExecuteAction('audit_pass', s, role) && isOwner) acts.push(makeActionDescriptor('audit_pass'))
+      if (canExecuteAction('start_redesign', s, role)) acts.push(makeActionDescriptor('start_redesign'))
+      if (canExecuteAction('finish_redesign', s, role) && isOwner) acts.push(makeActionDescriptor('finish_redesign'))
     }
     if (['engineer','super_admin'].includes(role)) {
       const hasEngOwner = !!getEngineerOwner(req)
       const isEngOwner  = role === 'super_admin' || !hasEngOwner || isEngineerOwner(req, userId, userName)
 
-      if (['design_done','redesign_done','need_development_update'].includes(s)) acts.push({ action:'start_dev', label:'Start Development', icon:'⚙️', primary:true, nextStatus:'in_progress_code', needsName:true, title:'Start Development' })
-      if (s === 'in_progress_code' && isEngOwner) acts.push({ action:'finish_dev', label:'Submit for Review', icon:'📤', primary:true, nextStatus:'need_review_designer', needsName:true, needsScore:true, notesRequired:true, notesLabel:'Development Notes', notesPlaceholder:'Describe what was built...', needsPreviewLink:true, needsScreenshot:true, title:'Submit Development' })
-      if (s === 'need_revision'  && isEngOwner) acts.push({ action:'submit_revision', label:'Submit Revision', icon:'📤', primary:true, nextStatus:'need_review_designer', needsName:true, notesRequired:true, notesLabel:'Revision Notes', notesPlaceholder:'What was changed...', needsPreviewLink:true, needsScreenshot:true, title:'Submit Revision' })
-      if (['done_review','need_publish'].includes(s) && isEngOwner) acts.push({ action:'publish', label:'Publish Component', icon:'🚀', primary:true, nextStatus:'done', needsName:true, needsComponentName:true, needsVersion:true, needsLibrary:true, needsDocLink:true, title:'Publish Component' })
+      if (canExecuteAction('start_dev', s, role)) acts.push(makeActionDescriptor('start_dev'))
+      if (canExecuteAction('finish_dev', s, role) && isEngOwner) acts.push(makeActionDescriptor('finish_dev'))
+      if (canExecuteAction('submit_revision', s, role) && isEngOwner) acts.push(makeActionDescriptor('submit_revision'))
+      if (canExecuteAction('publish', s, role) && isEngOwner) acts.push(makeActionDescriptor('publish'))
     }
     return acts
   }
@@ -225,32 +432,13 @@ export const useRequestsStore = defineStore('requests', () => {
   )
 
   function myTasks(role, userName = null, userId = null) {
-    // Designer statuses
-    const OPEN_DESIGNER   = ['backlog','need_design_validation','need_review_designer','need_audit','need_redesign']
-    const ACTIVE_DESIGNER = ['in_design','on_review_designer','on_audit','in_redesign']
-    // Engineer statuses
-    const OPEN_ENGINEER   = ['design_done','redesign_done','need_development_update']
-    const ACTIVE_ENGINEER = ['in_progress_code','need_revision','done_review','need_publish']
-
     return items.value.filter(req => {
-      if (role === 'super_admin' &&
-        [...OPEN_DESIGNER, ...ACTIVE_DESIGNER, ...OPEN_ENGINEER, ...ACTIVE_ENGINEER].includes(req.status)) return true
-      if (role === 'designer') {
-        if (OPEN_DESIGNER.includes(req.status)) return true
-        if (ACTIVE_DESIGNER.includes(req.status)) {
-          const hasOwner = !!getDesignerOwner(req)
-          return !hasOwner || isDesignerOwner(req, userId, userName)
-        }
-        return false
+      if (req.status === 'done') return false
+
+      if (role === 'super_admin' || role === 'designer' || role === 'engineer') {
+        return getAvailableActions(req, role, userName, userId).length > 0
       }
-      if (role === 'engineer') {
-        if (OPEN_ENGINEER.includes(req.status)) return true
-        if (ACTIVE_ENGINEER.includes(req.status)) {
-          const hasOwner = !!getEngineerOwner(req)
-          return !hasOwner || isEngineerOwner(req, userId, userName)
-        }
-        return false
-      }
+
       if (role === 'developer') return req.requesterRole === 'developer'
       return false
     })
